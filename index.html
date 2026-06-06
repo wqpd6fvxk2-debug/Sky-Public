@@ -76,6 +76,7 @@
   #loc .dot.sim{background:#c98b6a;box-shadow:0 0 8px #c98b6a;}
   #loc .dot.limit{background:#d6b24a;box-shadow:0 0 8px #d6b24a;}
   #feed-word{vertical-align:middle;}
+  #feed-age{font-size:9px;letter-spacing:0.18em;color:rgba(241,233,216,0.4);margin:3px 0 1px;min-height:11px;}
 
   /* ── Ambient rotating caption, bottom center ── */
   #caption{
@@ -130,7 +131,7 @@
 
     /* location → top-left, drop coordinates to save room */
     #loc{top:18px;left:16px;bottom:auto;line-height:1.7;}
-    #loc > div:nth-child(3){display:none;}
+    #loc .coords{display:none;}
     #loc .city{font-size:9px;letter-spacing:0.2em;}
 
     /* clock → top-right, compact */
@@ -234,8 +235,9 @@
 
   <div id="loc">
     <div><span class="dot" id="feed-dot"></span><span id="feed-word">CONNECTING</span></div>
+    <div id="feed-age"></div>
     <div class="city">RA'ANANA · IL</div>
-    <div>32.18°N&nbsp;&nbsp;34.84°E</div>
+    <div class="coords">32.18°N&nbsp;&nbsp;34.84°E</div>
   </div>
 
   <div id="caption"></div>
@@ -289,6 +291,7 @@ const MAX_LABELS = 5;           // nearest N aircraft get full cards
 let W,H,CX,CY,RAD;
 let flights = [];
 let selectedIcao = null;
+let lastUpdateAt = 0;   // ms timestamp of last successful data fetch
 let feedMeta = { source:null, sub:null, error:null, connected:false };
 let stars = [], dust = [], nebula = [], glints = [];
 let t0 = performance.now();
@@ -813,6 +816,7 @@ async function refresh(){
       if(old){ f.trail=[...(old.trail||[]),{lat:old.lat,lon:old.lon}]; if(f.trail.length>16)f.trail.shift(); }
     });
     flights=data;
+    lastUpdateAt=Date.now();
     dot.className='dot';
     word.textContent = 'LIVE · '+(feedMeta.source||'');
   }else{
@@ -824,7 +828,17 @@ async function refresh(){
   }
   if(selectedIcao) updateFocusPanel();
   renderDiag();
+  updateFeedAge();
   updateCaption();
+}
+
+// ── "updated Ns ago" (freshness of the data on screen) ───
+function updateFeedAge(){
+  const el=document.getElementById('feed-age');
+  if(!el) return;
+  if(!lastUpdateAt){ el.textContent=''; return; }
+  const s=Math.max(0,Math.round((Date.now()-lastUpdateAt)/1000));
+  el.textContent = 'updated ' + (s<=1 ? 'just now' : s+'s ago');
 }
 
 // ── DIAGNOSTICS PANEL (shown only when no signal) ────────
@@ -983,6 +997,7 @@ async function init(){
   tickClock(); setInterval(tickClock,15000);
   setInterval(updateCaption,8000);
   setInterval(updateFocusPanel,600);
+  setInterval(updateFeedAge,1000);
 
   // Poll every UPDATE_INTERVAL, but: (a) never overlap requests — wait for each
   // refresh to finish before scheduling the next; (b) if a source rate-limits us,
