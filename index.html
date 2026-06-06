@@ -2,105 +2,127 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Sky Above — Nocturne</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Live Flight Adventures</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Nunito:wght@400;600;700&display=swap');
 
   :root{
-    --ink:#04050d;
-    --indigo:#0a0f29;
-    --core:#141b46;
-    --gold:#e9c884;
-    --gold-bright:#ffe1ad;
-    --gold-dim:rgba(233,200,132,0.55);
-    --cream:#f1e9d8;
-    --cream-dim:rgba(241,233,216,0.55);
-    --cyan:#9bd3d6;
-    --hair:rgba(233,200,132,0.22);
-    --glass:rgba(9,12,28,0.5);
+    --ink:#0a1130;
+    --indigo:#16225a;
+    --core:#243a86;
+    --gold:#ffd86b;
+    --gold-bright:#ffe9a8;
+    --gold-dim:rgba(255,216,107,0.7);
+    --cream:#fbf6e9;
+    --cream-dim:rgba(251,246,233,0.7);
+    --cyan:#9fe2e6;
+    --pink:#ff9ec0;
+    --green:#9be0a4;
+    --hair:rgba(255,255,255,0.28);
+    --glass:rgba(20,30,70,0.55);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);}
-  body{font-family:'IBM Plex Mono',monospace;color:var(--cream);}
+  body{font-family:'Baloo 2','Nunito',sans-serif;color:var(--cream);
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
 
   #sky-bg,#sky-fx{position:fixed;inset:0;width:100vw;height:100vh;}
   #sky-bg{z-index:0;}
   #sky-fx{z-index:1;}
 
-  /* edge vignette to hide projector spill */
+  /* edge vignette to hide projector spill (gentle, keeps the sky bright) */
   #vignette{
     position:fixed;inset:0;z-index:2;pointer-events:none;
-    background:radial-gradient(ellipse 75% 75% at 50% 48%,
-      transparent 52%, rgba(4,5,13,0.55) 80%, rgba(4,5,13,0.92) 100%);
+    background:radial-gradient(ellipse 80% 80% at 50% 48%,
+      transparent 60%, rgba(8,12,40,0.4) 85%, rgba(8,12,40,0.78) 100%);
   }
   /* faint film grain */
   #grain{
-    position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0.05;
+    position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0.03;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   #hud{position:fixed;inset:0;z-index:5;pointer-events:none;}
 
-  /* ── Title, top center ── */
+  /* ── Title banner, top center ── */
   #title{
-    position:absolute;top:42px;left:50%;transform:translateX(-50%);
+    position:absolute;top:30px;left:50%;transform:translateX(-50%);
     text-align:center;
+    background:linear-gradient(180deg, rgba(40,58,134,0.78), rgba(24,34,90,0.72));
+    border:2px solid rgba(159,226,230,0.55);
+    border-radius:26px; padding:12px 30px 13px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18),
+               0 0 26px rgba(159,226,230,0.18);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
   }
-  #title .over{
-    font-size:10px;letter-spacing:0.55em;text-transform:uppercase;
-    color:var(--gold-dim);font-weight:400;margin-bottom:6px;padding-left:0.55em;
-  }
+  #title .over{ display:none; }
   #title .main{
-    font-family:'Cormorant Garamond',serif;font-weight:400;font-style:italic;
-    font-size:40px;letter-spacing:0.02em;color:var(--cream);
-    line-height:1;text-shadow:0 2px 40px rgba(233,200,132,0.28);
+    font-family:'Baloo 2',sans-serif; font-weight:800;
+    font-size:30px; letter-spacing:0.04em; line-height:1;
+    color:#fff; text-shadow:0 2px 0 rgba(0,0,0,0.18), 0 0 22px rgba(159,226,230,0.5);
   }
   #title .sub{
-    margin-top:10px;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;
-    color:var(--cream-dim);font-weight:300;
+    margin-top:3px; font-family:'Baloo 2',sans-serif; font-weight:500;
+    font-size:13px; letter-spacing:0.01em; color:var(--gold-bright);
+    text-transform:none;
   }
-  #title .sub b{color:var(--gold-dim);font-weight:400;}
+  #title .sub b{color:var(--gold-bright);font-weight:700;}
 
   /* ── Location, bottom left ── */
   #loc{
-    position:absolute;left:36px;bottom:30px;
-    font-size:10px;letter-spacing:0.22em;line-height:2.1;color:var(--cream-dim);
+    position:absolute;left:28px;bottom:26px;
+    font-family:'Baloo 2',sans-serif; font-weight:500;
+    font-size:12px;letter-spacing:0.02em;line-height:1.55;color:var(--cream-dim);
+    background:rgba(20,30,70,0.5); border:1.5px solid var(--hair);
+    border-radius:16px; padding:9px 15px;
+    -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
   }
-  #loc .city{color:var(--gold-dim);letter-spacing:0.34em;}
+  #loc .city{color:var(--gold-bright);letter-spacing:0.04em;font-weight:700;}
   #loc .dot{
-    display:inline-block;width:5px;height:5px;border-radius:50%;
-    background:var(--gold);margin-right:7px;vertical-align:middle;
-    box-shadow:0 0 8px var(--gold);
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--green);margin-right:7px;vertical-align:middle;
+    box-shadow:0 0 9px var(--green);
   }
-  #loc .dot.sim{background:#c98b6a;box-shadow:0 0 8px #c98b6a;}
-  #loc .dot.limit{background:#d6b24a;box-shadow:0 0 8px #d6b24a;}
-  #feed-word{vertical-align:middle;}
-  #feed-age{font-size:9px;letter-spacing:0.18em;color:rgba(241,233,216,0.4);margin:3px 0 1px;min-height:11px;}
+  #loc .dot.sim{background:#ff9e7a;box-shadow:0 0 9px #ff9e7a;}
+  #loc .dot.limit{background:var(--gold);box-shadow:0 0 9px var(--gold);}
+  #feed-word{vertical-align:middle;font-weight:600;color:var(--cream);}
+  #feed-age{font-size:10px;letter-spacing:0.01em;color:rgba(251,246,233,0.5);margin:1px 0 0;min-height:12px;}
 
-  /* ── Ambient rotating caption, bottom center ── */
+  /* ── Ambient rotating caption — a soft speech bubble, bottom center ── */
   #caption{
-    position:absolute;bottom:34px;left:50%;transform:translateX(-50%);
-    width:min(620px,70vw);text-align:center;
-    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
-    font-size:21px;letter-spacing:0.03em;color:var(--cream);
-    opacity:0;transition:opacity 1.6s ease;
-    text-shadow:0 2px 30px rgba(0,0,0,0.6);
+    position:absolute;bottom:30px;left:50%;transform:translateX(-50%);
+    max-width:min(560px,82vw);text-align:center;
+    font-family:'Baloo 2',sans-serif;font-weight:500;
+    font-size:16px;letter-spacing:0.01em;color:var(--cream);
+    padding:11px 22px; border-radius:22px;
+    background:rgba(20,30,70,0.5); border:1.5px solid rgba(255,255,255,0.22);
+    -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
+    opacity:0;transition:opacity 1.2s ease;
+    box-shadow:0 8px 30px rgba(0,0,0,0.3);
   }
-  #caption.show{opacity:0.82;}
+  #caption::after{   /* little bubble tail */
+    content:''; position:absolute; left:50%; bottom:-8px; transform:translateX(-50%);
+    border-left:9px solid transparent; border-right:9px solid transparent;
+    border-top:9px solid rgba(255,255,255,0.22);
+  }
+  #caption.show{opacity:0.95;}
 
-  /* ── Clock, bottom right ── */
+  /* ── Clock pill, bottom right ── */
   #clock{
-    position:absolute;right:36px;bottom:28px;text-align:right;
+    position:absolute;right:28px;bottom:24px;text-align:center;
+    background:rgba(20,30,70,0.5); border:1.5px solid var(--hair);
+    border-radius:18px; padding:7px 18px;
+    -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
   }
   #clock .time{
-    font-family:'Cormorant Garamond',serif;font-weight:300;
-    font-size:34px;letter-spacing:0.04em;color:var(--cream);line-height:1;
-    text-shadow:0 2px 24px rgba(233,200,132,0.2);
+    font-family:'Baloo 2',sans-serif; font-weight:700;
+    font-size:26px;letter-spacing:0.02em;color:#fff;line-height:1;
+    text-shadow:0 0 18px rgba(255,216,107,0.35);
   }
   #clock .date{
-    margin-top:5px;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;
-    color:var(--cream-dim);font-weight:300;
+    margin-top:2px;font-family:'Baloo 2',sans-serif;font-size:11px;letter-spacing:0.03em;
+    color:var(--gold-bright);font-weight:600;text-transform:none;
   }
 
   /* ── Loading ── */
@@ -111,61 +133,61 @@
   }
   #loading.fade{opacity:0;pointer-events:none;}
   #loading .l-main{
-    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
-    font-size:34px;color:var(--cream);letter-spacing:0.03em;
-    text-shadow:0 0 40px rgba(233,200,132,0.3);
+    font-family:'Baloo 2',sans-serif;font-weight:800;
+    font-size:30px;color:#fff;letter-spacing:0.03em;
+    text-shadow:0 0 36px rgba(159,226,230,0.45);
   }
   #loading .l-sub{
-    font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:var(--gold-dim);
+    font-size:12px;letter-spacing:0.06em;color:var(--gold-bright);font-weight:600;
   }
-  #loading .l-bar{width:240px;height:1px;background:rgba(233,200,132,0.15);overflow:hidden;}
-  #loading .l-fill{height:100%;width:0;background:var(--gold);box-shadow:0 0 10px var(--gold);transition:width 2.4s cubic-bezier(.4,0,.2,1);}
-  #loading .l-msg{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--cream-dim);}
+  #loading .l-bar{width:240px;height:4px;border-radius:4px;background:rgba(255,255,255,0.14);overflow:hidden;}
+  #loading .l-fill{height:100%;width:0;border-radius:4px;background:var(--cyan);box-shadow:0 0 12px var(--cyan);transition:width 2.4s cubic-bezier(.4,0,.2,1);}
+  #loading .l-msg{font-size:11px;letter-spacing:0.03em;color:var(--cream-dim);font-weight:500;}
 
   /* ── MOBILE / PORTRAIT: declutter the bottom band ── */
   @media (max-width: 640px){
-    #title{top:26px;}
-    #title .over{font-size:8px;letter-spacing:0.42em;margin-bottom:4px;}
-    #title .main{font-size:27px;}
-    #title .sub{font-size:8px;letter-spacing:0.24em;margin-top:7px;}
+    #title{top:16px;padding:9px 18px 10px;border-radius:20px;}
+    #title .main{font-size:21px;letter-spacing:0.02em;}
+    #title .sub{font-size:10px;margin-top:2px;}
 
     /* location → top-left, drop coordinates to save room */
-    #loc{top:18px;left:16px;bottom:auto;line-height:1.7;}
+    #loc{top:14px;left:12px;bottom:auto;padding:7px 11px;border-radius:13px;line-height:1.35;}
     #loc .coords{display:none;}
-    #loc .city{font-size:9px;letter-spacing:0.2em;}
+    #loc .city{font-size:10px;letter-spacing:0.02em;}
 
     /* clock → top-right, compact */
-    #clock{top:14px;right:16px;bottom:auto;}
-    #clock .time{font-size:19px;letter-spacing:0.02em;}
-    #clock .date{font-size:7.5px;letter-spacing:0.18em;margin-top:2px;}
+    #clock{top:12px;right:12px;bottom:auto;padding:5px 12px;border-radius:14px;}
+    #clock .time{font-size:17px;letter-spacing:0.01em;}
+    #clock .date{font-size:9px;margin-top:1px;}
 
     /* caption owns the bottom alone */
-    #caption{bottom:22px;width:90vw;font-size:15px;line-height:1.35;}
+    #caption{bottom:18px;max-width:90vw;font-size:13px;padding:9px 16px;}
   }
   @media (max-width: 380px){
-    #title .main{font-size:24px;}
-    #caption{font-size:14px;}
+    #title .main{font-size:19px;}
+    #caption{font-size:12px;}
   }
 
   /* ── PROXIMITY ALERT TOAST ── */
   #alert-toast{
-    position:fixed; left:50%; top:64px; transform:translateX(-50%) translateY(-16px);
+    position:fixed; left:50%; top:96px; transform:translateX(-50%) translateY(-16px);
     z-index:11; pointer-events:none; opacity:0;
     display:flex; align-items:center; gap:9px;
-    padding:10px 18px; border-radius:999px;
-    background:rgba(20,15,30,0.82); border:1px solid rgba(233,200,132,0.55);
-    color:var(--cream); font-family:'IBM Plex Mono',monospace;
-    font-size:11px; letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap;
+    padding:11px 20px; border-radius:999px;
+    background:linear-gradient(180deg, rgba(36,52,120,0.9), rgba(22,32,80,0.88));
+    border:2px solid var(--gold);
+    color:#fff; font-family:'Baloo 2',sans-serif; font-weight:700;
+    font-size:13px; letter-spacing:0.02em; text-transform:none; white-space:nowrap;
     -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-    box-shadow:0 8px 36px rgba(0,0,0,0.5), 0 0 22px rgba(233,200,132,0.18);
+    box-shadow:0 8px 36px rgba(0,0,0,0.5), 0 0 26px rgba(255,216,107,0.3);
     transition:opacity .45s ease, transform .45s cubic-bezier(.2,.85,.25,1);
   }
   #alert-toast::before{
-    content:'✈'; color:var(--gold); font-size:13px;
-    transform:rotate(45deg); /* nose-up, matches the celestial glyphs */
+    content:'✈'; color:var(--gold); font-size:15px;
+    transform:rotate(-45deg);
   }
   #alert-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
-  @media (max-width:640px){ #alert-toast{ top:54px; font-size:10px; padding:9px 15px; } }
+  @media (max-width:640px){ #alert-toast{ top:78px; font-size:12px; padding:9px 16px; } }
 
   /* ── ZOOM CONTROL ── */
   #zoom{
@@ -173,76 +195,81 @@
     display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none;
   }
   .zbtn{
-    pointer-events:auto; width:42px; height:42px; border-radius:50%;
-    background:rgba(9,12,28,0.55); border:1px solid var(--hair);
-    color:var(--cream); font:300 22px/1 'IBM Plex Mono',monospace;
+    pointer-events:auto; width:46px; height:46px; border-radius:50%;
+    background:rgba(20,30,70,0.6); border:2px solid var(--hair);
+    color:#fff; font:700 24px/1 'Baloo 2',sans-serif;
     -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
     display:flex; align-items:center; justify-content:center;
     cursor:pointer; user-select:none; -webkit-user-select:none;
     transition:background .15s, border-color .15s, transform .08s;
   }
-  .zbtn:hover{ border-color:rgba(233,200,132,0.5); }
-  .zbtn:active{ background:rgba(233,200,132,0.22); transform:scale(0.93); }
+  .zbtn:hover{ border-color:var(--gold); }
+  .zbtn:active{ background:rgba(255,216,107,0.25); transform:scale(0.93); }
   .zbtn:disabled{ opacity:0.3; pointer-events:none; }
   #zoom-level{
-    font:300 9px/1 'IBM Plex Mono',monospace; letter-spacing:0.12em;
-    color:var(--gold-dim); pointer-events:none; text-align:center;
+    font:700 11px/1 'Baloo 2',sans-serif; letter-spacing:0.02em;
+    color:var(--gold-bright); pointer-events:none; text-align:center;
   }
 
   /* ── FOCUS PANEL ── */
   #focus-panel{
     position:fixed; left:50%; bottom:26px;
     transform:translateX(-50%) translateY(22px);
-    width:min(440px,90vw);
-    background:rgba(9,12,28,0.74);
-    border:1px solid var(--hair);
-    border-radius:14px; padding:15px 18px 16px;
+    width:min(450px,92vw);
+    background:linear-gradient(180deg, rgba(36,52,120,0.82), rgba(20,30,70,0.8));
+    border:2px solid rgba(159,226,230,0.45);
+    border-radius:22px; padding:16px 18px 17px;
     backdrop-filter:blur(16px) saturate(125%);
     -webkit-backdrop-filter:blur(16px) saturate(125%);
-    box-shadow:0 14px 60px rgba(0,0,0,0.55);
+    box-shadow:0 18px 60px rgba(0,0,0,0.5), 0 0 30px rgba(159,226,230,0.12);
     z-index:8; opacity:0; pointer-events:none;
     transition:opacity .42s ease, transform .42s cubic-bezier(.2,.85,.25,1);
   }
   #focus-panel.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
   #focus-panel .fp-head{ display:flex; align-items:center; gap:11px; }
   #focus-panel .fp-dot{
-    width:9px;height:9px;border-radius:50%;background:var(--gold);
+    width:12px;height:12px;border-radius:50%;background:var(--gold);
     box-shadow:0 0 12px var(--gold); flex:0 0 auto;
   }
   #focus-panel .fp-call{
-    font-family:'Cormorant Garamond',serif; font-weight:500; font-size:29px;
-    line-height:1; color:var(--cream); letter-spacing:.02em;
+    font-family:'Baloo 2',sans-serif; font-weight:800; font-size:28px;
+    line-height:1; color:#fff; letter-spacing:.01em;
   }
   #focus-panel .fp-from{
-    margin-top:3px; font-size:9px; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--gold-dim);
+    margin-top:2px; font-family:'Baloo 2',sans-serif; font-weight:600;
+    font-size:11px; letter-spacing:.03em; text-transform:none;
+    color:var(--gold-bright);
   }
   #focus-panel .fp-x{
-    position:absolute; top:11px; right:12px; width:24px; height:24px;
+    position:absolute; top:13px; right:14px; width:28px; height:28px;
     display:flex; align-items:center; justify-content:center;
-    color:var(--cream-dim); font-size:14px; cursor:pointer; border-radius:50%;
+    color:#fff; font-size:15px; cursor:pointer; border-radius:50%;
+    background:rgba(255,255,255,0.08);
     transition:color .2s, background .2s;
   }
-  #focus-panel .fp-x:hover{ color:var(--cream); background:rgba(255,255,255,0.07); }
+  #focus-panel .fp-x:hover{ background:rgba(255,255,255,0.18); }
   #focus-panel .fp-route{
-    margin-top:11px; font-family:'IBM Plex Mono',monospace; font-size:11px;
-    letter-spacing:.02em; color:var(--cream); line-height:1.45;
-    padding:8px 10px; border:1px solid var(--hair); border-radius:8px;
-    background:rgba(233,200,132,0.05); min-height:16px; display:none;
+    margin-top:12px; font-family:'Baloo 2',sans-serif; font-weight:600; font-size:13px;
+    letter-spacing:.01em; color:#fff; line-height:1.4;
+    padding:9px 12px; border:1.5px solid rgba(255,255,255,0.2); border-radius:13px;
+    background:rgba(255,255,255,0.06); min-height:18px; display:none;
   }
   #focus-panel .fp-route.show{ display:block; }
-  #focus-panel .fp-route .arrow{ color:var(--gold); margin:0 6px; }
-  #focus-panel .fp-route .muted{ color:var(--cream-dim); }
+  #focus-panel .fp-route b{ color:var(--cyan); font-weight:800; }
+  #focus-panel .fp-route .arrow{ color:var(--gold); margin:0 7px; font-weight:800; }
+  #focus-panel .fp-route .muted{ color:var(--cream-dim); font-weight:500; }
   #focus-panel .fp-grid{
-    margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:12px 20px;
+    margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:13px 20px;
   }
   #focus-panel .fp-cell .k{
-    font-size:8.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--cream-dim);
+    font-family:'Baloo 2',sans-serif; font-weight:600;
+    font-size:10px; letter-spacing:.04em; text-transform:uppercase; color:var(--gold-bright);
   }
   #focus-panel .fp-cell .v{
-    margin-top:3px; font-size:15px; letter-spacing:.03em; color:var(--cream);
+    margin-top:2px; font-family:'Baloo 2',sans-serif; font-weight:600;
+    font-size:16px; letter-spacing:.01em; color:#fff;
   }
-  #focus-panel .fp-cell .v small{ color:var(--gold-dim); font-size:11px; margin-left:3px; }
+  #focus-panel .fp-cell .v small{ color:var(--cream-dim); font-size:11px; margin-left:3px; font-weight:500; }
 
   /* ── DIAGNOSTICS (only when no signal) ── */
   #diag{
@@ -256,9 +283,10 @@
     font-size:11px; line-height:1.6; letter-spacing:.02em; color:var(--cream-dim);
   }
   #diag.show{ opacity:1; }
+  #diag, #diag *{ font-family:'Baloo 2',sans-serif; }
   #diag .diag-title{
-    font-size:9px; letter-spacing:.32em; text-transform:uppercase;
-    color:#d6a263; margin-bottom:10px;
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; font-weight:700;
+    color:var(--gold); margin-bottom:10px;
   }
   #diag-origin{ font-size:9.5px; color:rgba(241,233,216,0.4); margin-bottom:10px; word-break:break-all; }
   #diag-list .row{ display:flex; justify-content:space-between; gap:12px; padding:2px 0; }
@@ -279,9 +307,8 @@
 
 <div id="hud">
   <div id="title">
-    <div class="over">Live · Overhead</div>
-    <div class="main">The Sky Above</div>
-    <div class="sub">aircraft within <b id="range-label">120&nbsp;km</b> · Ra'anana</div>
+    <div class="main">LIVE FLIGHT ADVENTURES</div>
+    <div class="sub">aircraft within <b id="range-label">250&nbsp;km</b> · right now in the sky</div>
   </div>
 
   <div id="loc">
@@ -346,8 +373,9 @@
 <script>
 // ── CONFIG ───────────────────────────────────────────────
 const HOME = { lat: 32.18, lon: 34.84 };
-const RANGE_KM = 120;   // city-region scale: aircraft motion is visible here.
-                        // raise toward 250 for more sky / less apparent motion.
+const RANGE_KM = 250;   // default display range. Wider = MANY more aircraft on screen at once;
+                        // pinch-to-zoom (up to MAX_ZOOM) zooms in close for motion + detail.
+const MAX_ZOOM = 12;    // deepest zoom — at 250 km this is an ~21 km close-in view
 const UPDATE_INTERVAL = 1000;   // poll every 1s (see self-scheduling loop: backs off if rate-limited)
 const MAX_LABELS = 5;           // nearest N aircraft get full cards
 
@@ -359,7 +387,7 @@ let lastUpdateAt = 0;   // ms timestamp of last successful data fetch
 let zoom = 1;           // display zoom: effective range = RANGE_KM / zoom (fetch stays full)
 function effRange(){ return RANGE_KM / zoom; }
 let feedMeta = { source:null, sub:null, error:null, connected:false };
-let stars = [], dust = [], nebula = [], glints = [];
+let stars = [], dust = [], nebula = [], glints = [], clouds = [], cutestars = [];
 let t0 = performance.now();
 
 // ── MATH ─────────────────────────────────────────────────
@@ -395,6 +423,29 @@ function acol(altM, l, a){
   const {h,s}=altHSL(altM);
   return `hsla(${h},${s}%,${l}%,${a})`;
 }
+
+// ── PER-AIRCRAFT COLOR ───────────────────────────────────
+// The reference art gives every plane its own cheerful color. We mirror that: each aircraft
+// gets a stable color picked from a fixed palette by hashing its ICAO id, so the same plane
+// keeps the same color across refreshes (its glyph, trail, and label bubble all match).
+const PLANE_PALETTE = [
+  [255,138,168],  // pink
+  [124,214,148],  // green
+  [255,183,94],   // orange
+  [255,224,120],  // yellow
+  [124,196,255],  // sky blue
+  [196,160,255],  // lavender
+  [120,224,212],  // teal
+  [255,160,120],  // coral
+];
+function hashStr(s){ let h=0; s=s||''; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))>>>0; } return h; }
+function planeRGB(icao){ return PLANE_PALETTE[ hashStr(icao) % PLANE_PALETTE.length ]; }
+// alpha + optional lighten (l: 0 = base color, 1 = white) → an rgba() string
+function pcol(icao, a, l){
+  const [r,g,b]=planeRGB(icao); l=l||0;
+  const R=Math.round(r+(255-r)*l), G=Math.round(g+(255-g)*l), B=Math.round(b+(255-b)*l);
+  return `rgba(${R},${G},${B},${a==null?1:a})`;
+}
 function compass16(bear){
   const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   return dirs[Math.round(bear/22.5)%16];
@@ -411,74 +462,116 @@ function roundRect(ctx,x,y,w,h,r){
 
 // ── SKY GENERATION ───────────────────────────────────────
 function buildSky(){
-  stars=[]; dust=[]; nebula=[]; glints=[];
+  stars=[]; dust=[]; nebula=[]; glints=[]; clouds=[]; cutestars=[];
   // faint dust (baked to bg)
-  for(let i=0;i<360;i++){
-    dust.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*0.9+0.2, a:Math.random()*0.4+0.08 });
+  for(let i=0;i<300;i++){
+    dust.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*0.9+0.2, a:Math.random()*0.45+0.1 });
   }
   // twinkling stars (fx)
-  for(let i=0;i<150;i++){
+  for(let i=0;i<160;i++){
     stars.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.4,
-      base:Math.random()*0.5+0.3, ph:Math.random()*Math.PI*2, sp:Math.random()*1.5+0.4 });
+      base:Math.random()*0.6+0.35, ph:Math.random()*Math.PI*2, sp:Math.random()*1.5+0.4 });
   }
   // a few bright glints (4-point sparkle)
-  for(let i=0;i<14;i++){
+  for(let i=0;i<16;i++){
     glints.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.6+1.4,
       ph:Math.random()*Math.PI*2, sp:Math.random()*0.8+0.3,
-      h:Math.random()<0.5?46:190, s:Math.random()<0.5?40:35 });
+      h:Math.random()<0.5?46:190, s:Math.random()<0.5?55:45 });
   }
-  // nebula blobs (warm + cool, drifting)
-  const palette=[ '74,47,94', '120,70,90', '40,70,90', '90,75,45', '60,40,80' ];
+  // a handful of bigger cheerful colored stars (like the reference), gently pulsing
+  const starCols=[[255,224,120],[159,226,230],[255,158,192],[155,224,164]];
+  for(let i=0;i<7;i++){
+    cutestars.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*4+5,
+      col:starCols[i%starCols.length], ph:Math.random()*Math.PI*2, sp:Math.random()*0.7+0.3 });
+  }
+  // soft fluffy clouds drifting near the edges so the centre stays clear for the radar
   for(let i=0;i<6;i++){
+    const edge=Math.random();
+    clouds.push({
+      x:Math.random()*W,
+      y:(edge<0.5? Math.random()*H*0.32 : H*0.7+Math.random()*H*0.3),
+      s:(Math.random()*0.5+0.7)*Math.min(W,H)*0.18,
+      a:Math.random()*0.06+0.05,
+      drift:(Math.random()*0.5+0.2)*(Math.random()<0.5?-1:1),
+      ph:Math.random()*1000,
+    });
+  }
+  // nebula blobs (warm + cool, drifting) — subtler now that the sky is brighter
+  const palette=[ '120,150,255', '150,120,200', '90,160,210', '200,170,120', '120,110,200' ];
+  for(let i=0;i<5;i++){
     nebula.push({
       fx:Math.random(), fy:Math.random(),
       r:(Math.random()*0.4+0.35)*Math.max(W,H),
       col:palette[i%palette.length],
-      a:Math.random()*0.05+0.03,
+      a:Math.random()*0.04+0.025,
       ph:Math.random()*Math.PI*2, amp:Math.random()*0.015+0.006, sp:Math.random()*0.12+0.04,
     });
   }
 }
 
+// A soft cartoon cloud: a cluster of overlapping blurred puffs.
+function drawCloud(ctx, x, y, s, a){
+  ctx.save();
+  ctx.filter='blur(6px)';
+  ctx.fillStyle=`rgba(225,232,255,${a})`;
+  const puffs=[[0,0,1],[ -0.55,0.12,0.7],[0.55,0.12,0.72],[-0.25,-0.2,0.62],[0.28,-0.18,0.6]];
+  puffs.forEach(([dx,dy,r])=>{
+    ctx.beginPath(); ctx.arc(x+dx*s, y+dy*s*0.6, r*s*0.45, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.restore();
+}
+
 function paintBg(){
   const c=document.getElementById('sky-bg'), ctx=c.getContext('2d');
   c.width=W; c.height=H;
-  // deep radial gradient — luminous at center, near-black at edges
-  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.max(W,H)*0.75);
-  g.addColorStop(0,'#171f4e');
-  g.addColorStop(0.35,'#0e1436');
-  g.addColorStop(0.7,'#080c22');
-  g.addColorStop(1,'#04050d');
+  // brighter, warmer midnight-blue gradient — lit at the centre like the reference art
+  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.max(W,H)*0.8);
+  g.addColorStop(0,'#2c3f8e');
+  g.addColorStop(0.35,'#22317a');
+  g.addColorStop(0.7,'#16235c');
+  g.addColorStop(1,'#0c1330');
   ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
 
-  // faint milky-way band (diagonal denser dust)
-  ctx.save();
-  ctx.translate(CX,CY); ctx.rotate(-0.5);
-  const band=ctx.createLinearGradient(0,-H*0.12,0,H*0.12);
-  band.addColorStop(0,'rgba(120,120,170,0)');
-  band.addColorStop(0.5,'rgba(150,150,200,0.05)');
-  band.addColorStop(1,'rgba(120,120,170,0)');
-  ctx.fillStyle=band; ctx.fillRect(-W,-H*0.12,W*2,H*0.24);
-  ctx.restore();
+  // a gentle warm glow pooled at the centre, under the HOME marker
+  const glow=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.min(W,H)*0.5);
+  glow.addColorStop(0,'rgba(120,150,235,0.28)');
+  glow.addColorStop(1,'rgba(120,150,235,0)');
+  ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(CX,CY,Math.min(W,H)*0.5,0,Math.PI*2); ctx.fill();
 
   // dust
   dust.forEach(d=>{
     ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(210,220,255,${d.a})`; ctx.fill();
+    ctx.fillStyle=`rgba(220,228,255,${d.a})`; ctx.fill();
   });
 
-  // crescent moon — elegant, top-left
-  const mx=W*0.13, my=H*0.16, mr=Math.min(W,H)*0.055;
-  const halo=ctx.createRadialGradient(mx,my,mr*0.3,mx,my,mr*3.4);
-  halo.addColorStop(0,'rgba(255,240,210,0.22)');
-  halo.addColorStop(1,'rgba(255,240,210,0)');
-  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(mx,my,mr*3.4,0,Math.PI*2); ctx.fill();
+  // soft clouds (baked into the background so they stay calm behind the live layer)
+  clouds.forEach(cl=> drawCloud(ctx, cl.x, cl.y, cl.s, cl.a));
+
+  // ── friendly crescent moon with a sleepy face, top-left ──
+  const mx=W*0.12, my=H*0.15, mr=Math.min(W,H)*0.06;
+  const halo=ctx.createRadialGradient(mx,my,mr*0.3,mx,my,mr*3.6);
+  halo.addColorStop(0,'rgba(255,244,200,0.28)');
+  halo.addColorStop(1,'rgba(255,244,200,0)');
+  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(mx,my,mr*3.6,0,Math.PI*2); ctx.fill();
+  // moon disc
   const mg=ctx.createRadialGradient(mx-mr*0.3,my-mr*0.3,mr*0.2,mx,my,mr);
-  mg.addColorStop(0,'#fdf3d8'); mg.addColorStop(1,'#e7d3a4');
+  mg.addColorStop(0,'#fff6d8'); mg.addColorStop(1,'#ffe39c');
   ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,mr,0,Math.PI*2); ctx.fill();
-  // carve crescent
+  // sleepy face on the lit side (drawn BEFORE carving so the crescent keeps it)
+  ctx.strokeStyle='rgba(150,110,40,0.6)'; ctx.lineWidth=Math.max(1.4,mr*0.06);
+  ctx.lineCap='round';
+  // two closed-eye arcs
+  [[-0.34,-0.12],[0.04,-0.16]].forEach(([ex,ey])=>{
+    ctx.beginPath(); ctx.arc(mx+ex*mr, my+ey*mr+mr*0.16, mr*0.16, Math.PI*1.05, Math.PI*1.95); ctx.stroke();
+  });
+  // a small smile
+  ctx.beginPath(); ctx.arc(mx-mr*0.16, my+mr*0.28, mr*0.2, 0.15*Math.PI, 0.85*Math.PI); ctx.stroke();
+  // rosy cheek
+  ctx.fillStyle='rgba(255,160,150,0.35)';
+  ctx.beginPath(); ctx.arc(mx-mr*0.42, my+mr*0.22, mr*0.12, 0, Math.PI*2); ctx.fill();
+  // carve the crescent from the right side
   ctx.globalCompositeOperation='destination-out';
-  ctx.beginPath(); ctx.arc(mx+mr*0.55,my-mr*0.25,mr*0.95,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(mx+mr*0.62,my-mr*0.28,mr*0.95,0,Math.PI*2); ctx.fill();
   ctx.globalCompositeOperation='source-over';
 }
 
@@ -582,8 +675,9 @@ async function fetchFeed(){
 }
 
 // ── DRAW AIRCRAFT GLYPH ──────────────────────────────────
-function drawJet(ctx,size,color){
-  // elegant top-down jet, nose at +x
+function drawJet(ctx,size,color,light){
+  // A friendly two-tone plane: the body in the aircraft's color, with a lighter glossy
+  // belly stripe down the fuselage so it reads like the cheerful planes in the reference.
   ctx.beginPath();
   ctx.moveTo(size,0);
   ctx.lineTo(size*0.1,size*0.16);
@@ -602,23 +696,49 @@ function drawJet(ctx,size,color){
   ctx.closePath();
   ctx.fillStyle=color;
   ctx.fill();
+  // glossy belly highlight along the fuselage
+  if(light){
+    ctx.beginPath();
+    ctx.moveTo(size*0.85,0);
+    ctx.lineTo(-size*0.55,size*0.07);
+    ctx.lineTo(-size*0.55,-size*0.07);
+    ctx.closePath();
+    ctx.fillStyle=light;
+    ctx.fill();
+  }
 }
 
 // ── LABEL CARDS: compute geometry → de-collide → render ──
+// Each card is a rounded bubble in the aircraft's own color, echoing the reference art:
+// the callsign on top, the destination/origin city when we've looked it up, then the
+// climbing arrow + altitude, and the ground speed.
 function computeCard(ctx,f,pos,selected){
   const ft=Math.round(f.alt*3.28084).toLocaleString();
   const kn=Math.round(f.velocity*1.94384);
   const call=(f.callsign||f.icao24).trim();
-  const sub=f.origin_country||'';
-  const stat=`${ft} ft · ${kn} kn`;
-  const scale=W<640?0.9:1;
-  ctx.font=`500 ${13*scale}px 'IBM Plex Mono'`;
-  const w=Math.max(ctx.measureText(call).width, ctx.measureText(sub).width*1.05, ctx.measureText(stat).width)+24*scale;
-  const h=(selected?60:50)*scale;
-  // start: outward from centre, above the plane
+  // prefer a city from the route lookup (destination, else origin); fall back to feed info
+  const info=flightInfo[f.icao24];
+  let city='';
+  if(info && info.state==='ok'){
+    city = (info.destination && info.destination.place) || (info.origin && info.origin.place) || '';
+  }
+  if(!city) city = f.origin_country || '';
+  const arrow = (typeof f.vrate==='number' && f.vrate>150) ? '▲'
+              : (typeof f.vrate==='number' && f.vrate<-150) ? '▼' : '↑';
+  const alt = `${arrow} ${ft} ft`;
+  const spd = `${kn} kn`;
+  const scale=W<640?0.92:1;
+  ctx.font=`700 ${14*scale}px 'Baloo 2'`;
+  const wCall=ctx.measureText(call).width;
+  ctx.font=`600 ${11.5*scale}px 'Baloo 2'`;
+  const wCity=city?ctx.measureText(city).width:0;
+  const wStat=ctx.measureText(alt+'   '+spd).width;
+  const w=Math.max(wCall,wCity,wStat)+26*scale;
+  const lines = city?4:3;
+  const h=(16 + lines*15 + (selected?14:0))*scale;
   let x = pos.x<CX ? pos.x+16 : pos.x-w-16;
   let y = pos.y-h-12;
-  return { f,pos,selected,call,sub,stat,w,h,x,y,scale };
+  return { f,pos,selected,call,city,alt,spd,w,h,x,y,scale };
 }
 
 function decollide(cards,top,bottom){
@@ -639,60 +759,67 @@ function decollide(cards,top,bottom){
 }
 
 function renderCard(ctx,c){
-  const {f,pos,selected,call,sub,stat,w,h,x,y,scale}=c;
-  // leader line to plane
+  const {f,pos,selected,call,city,alt,spd,w,h,x,y,scale}=c;
+  const icao=f.icao24;
+  // leader line from the bubble to the plane, in the plane's color
   const ax=x+(pos.x<x?6:w-6), ay=y+(pos.y<y?6:h-6);
   ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(ax,ay);
-  ctx.strokeStyle=acol(f.alt,60,selected?0.5:0.28); ctx.lineWidth=0.6; ctx.stroke();
-  // body
+  ctx.strokeStyle=pcol(icao, selected?0.8:0.5); ctx.lineWidth=1.2; ctx.stroke();
+  // bubble body
   ctx.save();
-  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=18; ctx.shadowOffsetY=4;
-  roundRect(ctx,x,y,w,h,8);
-  ctx.fillStyle=selected?'rgba(14,18,40,0.8)':'rgba(9,12,28,0.62)'; ctx.fill();
+  ctx.shadowColor='rgba(0,0,0,0.4)'; ctx.shadowBlur=16; ctx.shadowOffsetY=4;
+  roundRect(ctx,x,y,w,h,13*scale);
+  ctx.fillStyle='rgba(18,26,62,0.82)'; ctx.fill();
   ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
-  roundRect(ctx,x,y,w,h,8);
-  ctx.strokeStyle=acol(f.alt,60,selected?0.5:0.3); ctx.lineWidth=1; ctx.stroke();
-  // accent dot
-  ctx.beginPath(); ctx.arc(x+13,y+15*scale,3.2,0,Math.PI*2);
-  ctx.fillStyle=acol(f.alt,72,1); ctx.shadowColor=acol(f.alt,72,1); ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+  // colored rounded border, matching the plane
+  roundRect(ctx,x,y,w,h,13*scale);
+  ctx.strokeStyle=pcol(icao, selected?1:0.85); ctx.lineWidth=selected?2.4:2; ctx.stroke();
   // text
   ctx.textAlign='left'; ctx.textBaseline='alphabetic';
-  ctx.font=`500 ${14*scale}px 'IBM Plex Mono'`; ctx.fillStyle='#f4ecdc';
-  ctx.fillText(call, x+24, y+20*scale);
-  ctx.font=`400 ${12*scale}px 'IBM Plex Mono'`; ctx.fillStyle='rgba(233,200,132,0.85)';
-  ctx.fillText(sub, x+13, y+36*scale);
-  ctx.font=`300 ${10*scale}px 'IBM Plex Mono'`; ctx.fillStyle='rgba(241,233,216,0.5)';
-  ctx.fillText(stat, x+13, y+48*scale);
+  let ty=y+19*scale;
+  ctx.font=`800 ${15*scale}px 'Baloo 2'`; ctx.fillStyle=pcol(icao,1,0.45);   // callsign, light tint of plane color
+  ctx.fillText(call, x+13*scale, ty); ty+=15*scale;
+  if(city){
+    ctx.font=`600 ${11.5*scale}px 'Baloo 2'`; ctx.fillStyle='#ffe9a8';
+    ctx.fillText(city, x+13*scale, ty); ty+=15*scale;
+  }
+  ctx.font=`600 ${12*scale}px 'Baloo 2'`; ctx.fillStyle='rgba(251,246,233,0.92)';
+  ctx.fillText(alt, x+13*scale, ty);
+  const altW=ctx.measureText(alt).width;
+  ctx.fillStyle='rgba(251,246,233,0.6)';
+  ctx.fillText('   '+spd, x+13*scale+altW, ty);
   if(selected){
-    ctx.fillStyle='rgba(155,211,214,0.7)';
-    ctx.fillText(`${compass16(f.heading)} · ${Math.round(pos.dist)} km`, x+13, y+h-5);
+    ty+=15*scale;
+    ctx.fillStyle=pcol(icao,0.9,0.3);
+    ctx.fillText(`${compass16(f.heading)} · ${Math.round(pos.dist)} km`, x+13*scale, ty);
   }
   ctx.restore();
 }
 
-// ── COMPASS (corner) ─────────────────────────────────────
+// ── COMPASS (corner) — a friendly badge with a little plane needle ──
 function drawCompass(ctx){
-  if(W<640) return;   // ring already carries N/E/S/W; keep mobile clean
-  const r=26, x=W-70, y=110;
+  if(W<640) return;   // the outer ring already carries N/E/S/W; keep mobile clean
+  const r=27, x=W-72, y=126;
   ctx.save();
-  ctx.strokeStyle='rgba(233,200,132,0.3)'; ctx.lineWidth=0.8;
+  // soft disc backing
+  const disc=ctx.createRadialGradient(x,y,0,x,y,r+6);
+  disc.addColorStop(0,'rgba(20,30,70,0.55)'); disc.addColorStop(1,'rgba(20,30,70,0.12)');
+  ctx.fillStyle=disc; ctx.beginPath(); ctx.arc(x,y,r+6,0,Math.PI*2); ctx.fill();
+  // ring
+  ctx.strokeStyle='rgba(159,226,230,0.55)'; ctx.lineWidth=1.6;
   ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x,y,r+4,0,Math.PI*2);
-  ctx.strokeStyle='rgba(233,200,132,0.12)'; ctx.stroke();
+  // cardinal letters
   ['N','E','S','W'].forEach((d,i)=>{
     const a=(i*90-90)*Math.PI/180;
-    const tx=x+(r+13)*Math.cos(a), ty=y+(r+13)*Math.sin(a);
-    ctx.font="400 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle= d==='N'?'rgba(233,200,132,0.85)':'rgba(241,233,216,0.4)';
+    const tx=x+(r+12)*Math.cos(a), ty=y+(r+12)*Math.sin(a);
+    ctx.font="700 11px 'Baloo 2'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle= d==='N'?'#ffd86b':'rgba(251,246,233,0.5)';
     ctx.fillText(d,tx,ty);
   });
-  // north needle
-  ctx.beginPath();
-  ctx.moveTo(x,y-r*0.7); ctx.lineTo(x-3.5,y); ctx.lineTo(x+3.5,y); ctx.closePath();
-  ctx.fillStyle='rgba(233,200,132,0.75)'; ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(x,y+r*0.7); ctx.lineTo(x-3.5,y); ctx.lineTo(x+3.5,y); ctx.closePath();
-  ctx.fillStyle='rgba(241,233,216,0.2)'; ctx.fill();
+  // a small plane needle pointing north (nose up)
+  ctx.translate(x,y); ctx.rotate(-Math.PI/2);   // point the +x nose toward N (up)
+  ctx.shadowColor='rgba(255,216,107,0.6)'; ctx.shadowBlur=8;
+  drawJet(ctx, 11, '#ffd86b', 'rgba(255,255,255,0.7)');
   ctx.restore();
 }
 
@@ -731,6 +858,31 @@ function draw(now){
     ctx.restore();
   });
 
+  // cheerful colored stars (4-point), softly pulsing — a nod to the reference art
+  cutestars.forEach(st=>{
+    const pulse=0.65+0.35*Math.sin(tt*st.sp+st.ph);
+    const [r,g,b]=st.col;
+    ctx.save(); ctx.translate(st.x,st.y); ctx.rotate(Math.PI/4*0+st.ph*0.1);
+    // soft glow
+    const gl=ctx.createRadialGradient(0,0,0,0,0,st.r*2.6);
+    gl.addColorStop(0,`rgba(${r},${g},${b},${0.5*pulse})`); gl.addColorStop(1,`rgba(${r},${g},${b},0)`);
+    ctx.fillStyle=gl; ctx.beginPath(); ctx.arc(0,0,st.r*2.6,0,Math.PI*2); ctx.fill();
+    // 4-point star using two crossed kite shapes
+    ctx.fillStyle=`rgba(${r},${g},${b},${0.85*pulse})`;
+    const R=st.r*pulse, n=R*0.34;
+    ctx.beginPath();
+    ctx.moveTo(0,-R); ctx.lineTo(n,-n); ctx.lineTo(R,0); ctx.lineTo(n,n);
+    ctx.lineTo(0,R); ctx.lineTo(-n,n); ctx.lineTo(-R,0); ctx.lineTo(-n,-n); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // drifting clouds in the live layer (slow horizontal drift, wraps around the screen)
+  clouds.forEach(cl=>{
+    const cx=((cl.x + tt*cl.drift*6) % (W+260) + (W+260)) % (W+260) - 130;
+    drawCloud(ctx, cx, cl.y, cl.s, cl.a*0.8);
+  });
+
   // ── range rings (reflect zoomed scale) ──
   const ER=effRange();
   const r1=Math.max(5,Math.round(ER/3/5)*5), r2=Math.round(2*ER/3/5)*5;
@@ -738,48 +890,58 @@ function draw(now){
   rings.forEach((ring,i)=>{
     const rr=RAD*ring.f;
     ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2);
-    ctx.setLineDash(i===2?[2,9]:[1,7]);
-    ctx.strokeStyle=i===2?'rgba(233,200,132,0.22)':'rgba(233,200,132,0.12)';
-    ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
+    ctx.setLineDash([3,8]);
+    ctx.strokeStyle=i===2?'rgba(255,255,255,0.4)':'rgba(255,255,255,0.26)';
+    ctx.lineWidth=1.4; ctx.stroke(); ctx.setLineDash([]);
     if(ring.l){
-      ctx.font="300 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillStyle='rgba(233,200,132,0.4)';
+      ctx.font="700 11px 'Baloo 2'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+      // a soft dark chip behind the label so it stays readable over rings
+      const lw=ctx.measureText(ring.l).width;
+      ctx.fillStyle='rgba(12,19,48,0.6)';
+      roundRect(ctx, CX-lw/2-6, CY-rr-9, lw+12, 18, 9); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.78)';
       ctx.fillText(ring.l, CX, CY-rr);
     }
   });
   // outer edge soft glow ring
   ctx.beginPath(); ctx.arc(CX,CY,RAD,0,Math.PI*2);
-  ctx.strokeStyle='rgba(233,200,132,0.18)'; ctx.lineWidth=1.2;
-  ctx.shadowColor='rgba(233,200,132,0.25)'; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.strokeStyle='rgba(159,226,230,0.4)'; ctx.lineWidth=1.6;
+  ctx.shadowColor='rgba(159,226,230,0.4)'; ctx.shadowBlur=16; ctx.stroke(); ctx.shadowBlur=0;
 
   // cardinal letters on outer ring
   [['N',0],['E',90],['S',180],['W',270]].forEach(([d,deg])=>{
     const a=(deg-90)*Math.PI/180;
     const tx=CX+(RAD+22)*Math.cos(a), ty=CY+(RAD+22)*Math.sin(a);
-    ctx.font="400 11px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle=d==='N'?'rgba(233,200,132,0.6)':'rgba(241,233,216,0.3)';
+    ctx.font="700 13px 'Baloo 2'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=d==='N'?'rgba(255,216,107,0.95)':'rgba(251,246,233,0.55)';
     ctx.fillText(d,tx,ty);
   });
 
-  // ── HOME marker ──
+  // ── HOME marker — a friendly little house, like the reference ──
   const hp=0.5+0.5*Math.sin(tt*1.1);
-  const hg=ctx.createRadialGradient(CX,CY,0,CX,CY,34);
-  hg.addColorStop(0,`rgba(255,225,173,${0.18+0.08*hp})`); hg.addColorStop(1,'rgba(255,225,173,0)');
-  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(CX,CY,34,0,Math.PI*2); ctx.fill();
-  // little house glyph in gold line
-  ctx.save(); ctx.translate(CX,CY-1);
-  ctx.strokeStyle='#ffe1ad'; ctx.lineWidth=1.4; ctx.lineJoin='round';
-  ctx.shadowColor='rgba(255,225,173,0.7)'; ctx.shadowBlur=10;
-  ctx.beginPath();
-  ctx.moveTo(-7,1); ctx.lineTo(-7,8); ctx.lineTo(7,8); ctx.lineTo(7,1);   // walls
-  ctx.moveTo(-9,1); ctx.lineTo(0,-7); ctx.lineTo(9,1);                    // roof
-  ctx.stroke();
-  ctx.shadowBlur=0; ctx.restore();
-  ctx.font="400 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='top';
-  ctx.fillStyle='rgba(241,233,216,0.6)';
-  ctx.save(); ctx.translate(0,0);
-  ctx.fillText('H O M E', CX, CY+16);
+  const hg=ctx.createRadialGradient(CX,CY,0,CX,CY,40);
+  hg.addColorStop(0,`rgba(255,225,150,${0.22+0.1*hp})`); hg.addColorStop(1,'rgba(255,225,150,0)');
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(CX,CY,40,0,Math.PI*2); ctx.fill();
+  // filled house: cream walls, warm-red roof, a little door
+  ctx.save(); ctx.translate(CX,CY-2);
+  const S=1.5;
+  // walls
+  ctx.fillStyle='#fbf0d8';
+  roundRect(ctx,-7*S,0,14*S,9*S,1.5); ctx.fill();
+  // roof
+  ctx.fillStyle='#ff7a6b';
+  ctx.beginPath(); ctx.moveTo(-9.5*S,0.5*S); ctx.lineTo(0,-8*S); ctx.lineTo(9.5*S,0.5*S); ctx.closePath(); ctx.fill();
+  // door
+  ctx.fillStyle='#c98b5a';
+  roundRect(ctx,-2*S,3.5*S,4*S,5.5*S,1); ctx.fill();
   ctx.restore();
+  // HOME label on a soft chip
+  ctx.font="800 11px 'Baloo 2'"; ctx.textAlign='center'; ctx.textBaseline='top';
+  const hw=ctx.measureText('HOME').width;
+  ctx.fillStyle='rgba(12,19,48,0.55)';
+  roundRect(ctx, CX-hw/2-7, CY+18, hw+14, 18, 9); ctx.fill();
+  ctx.fillStyle='#ffe9a8';
+  ctx.fillText('HOME', CX, CY+20);
 
   // ── aircraft ──
   const inRange=flights.filter(f=>f.lat!=null&&f.lon!=null)
@@ -792,42 +954,46 @@ function draw(now){
   // trails + glyphs
   inRange.forEach(({f,pos})=>{
     const sel=selectedIcao===f.icao24;
-    const dim = (focused && !sel) ? 0.22 : 1;   // recede everything but the focused flight
+    const dim = (focused && !sel) ? 0.28 : 1;   // recede everything but the focused flight
+    const icao=f.icao24;
 
-    // contrail
+    // colored dashed flight path (the trail), echoing the reference's playful dashed lines.
+    // It fades from faint (oldest point) to bright (current), in the aircraft's own color.
     if(f.trail&&f.trail.length>1){
+      ctx.lineCap='round'; ctx.setLineDash([2,7]);
       for(let i=1;i<f.trail.length;i++){
         const p0=latLonToXY(f.trail[i-1].lat,f.trail[i-1].lon);
         const p1=latLonToXY(f.trail[i].lat,f.trail[i].lon);
-        const a=(i/f.trail.length)*0.6;
+        const a=(i/f.trail.length)*0.7;
         ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y);
-        ctx.strokeStyle=acol(f.alt,62,a*dim); ctx.lineWidth=1.1; ctx.stroke();
+        ctx.strokeStyle=pcol(icao, a*dim); ctx.lineWidth=sel?2.4:1.8; ctx.stroke();
       }
       const last=latLonToXY(f.trail[f.trail.length-1].lat,f.trail[f.trail.length-1].lon);
       ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(pos.x,pos.y);
-      ctx.strokeStyle=acol(f.alt,62,0.6*dim); ctx.lineWidth=1.1; ctx.stroke();
+      ctx.strokeStyle=pcol(icao, 0.75*dim); ctx.lineWidth=sel?2.4:1.8; ctx.stroke();
+      ctx.setLineDash([]);
     }
 
-    // soft glow under jet
-    const gr=sel?22:13;
+    // soft glow under the plane, in its color
+    const gr=sel?24:15;
     const gg=ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,gr);
-    gg.addColorStop(0,acol(f.alt,62,(sel?0.55:0.32)*dim)); gg.addColorStop(1,acol(f.alt,62,0));
+    gg.addColorStop(0,pcol(icao,(sel?0.6:0.4)*dim)); gg.addColorStop(1,pcol(icao,0));
     ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(pos.x,pos.y,gr,0,Math.PI*2); ctx.fill();
 
-    // jet glyph
+    // the plane glyph itself, filled in its color with a glossy belly
     ctx.save();
     ctx.translate(pos.x,pos.y);
     ctx.rotate((f.heading-90)*Math.PI/180);
-    ctx.shadowColor=acol(f.alt,70,0.8*dim); ctx.shadowBlur=sel?13:7;
-    drawJet(ctx, sel?10:7, acol(f.alt, sel?88:70, (sel?1:0.95)*dim));
+    ctx.shadowColor=pcol(icao,0.85*dim); ctx.shadowBlur=sel?14:8;
+    drawJet(ctx, sel?11:8, pcol(icao, dim), `rgba(255,255,255,${0.7*dim})`);
     ctx.restore();
     ctx.shadowBlur=0;
   });
 
   // focus reticle on the selected aircraft
   if(focused){
-    const p=focused.pos; const {h:fh,s:fs}=altHSL(focused.f.alt);
-    const C=(a)=>`hsla(${fh},${fs}%,78%,${a})`;
+    const p=focused.pos;
+    const C=(a)=>pcol(focused.f.icao24, a, 0.15);   // reticle in the plane's color, lightened
     const pulse=(Math.sin(tt*2.3)+1)/2;
 
     // Route-ahead vector: a dashed line projected from the aircraft along its current
@@ -920,6 +1086,7 @@ async function refresh(){
     dot.className='dot';
     word.textContent = 'LIVE · '+(feedMeta.source||'');
     checkProximity(data);             // raise an alert if a new aircraft is now within 10 km
+    maybeEnrich(data);                // gradually fill destination cities on the on-radar labels
   }else{
     flights=[];                       // real-only: no data → empty sky, never fake
     dot.className = feedMeta.error==='rate_limited' ? 'dot limit' : 'dot sim';
@@ -1098,7 +1265,7 @@ function setFocus(icao){
     cap.classList.remove('show');     // panel takes the bottom while focused
     updateFocusPanel();
     const f=flights.find(o=>o.icao24===selectedIcao);
-    if(f) lookupRoute(f.callsign);    // fetch origin → destination for this aircraft
+    if(f) lookupFlight(f);    // fetch aircraft details + origin → destination for this plane
   }else{
     panel.classList.remove('show');
     updateCaption();                  // bring the ambient line back
@@ -1106,28 +1273,35 @@ function setFocus(icao){
 }
 
 // ── ROUTE & AIRLINE ENRICHMENT ───────────────────────────
-// Origin/destination airports and the operating airline are NOT broadcast over ADS-B.
-// They live in a separate schedule database, so we look them up on demand from adsbdb
-// (free, keyless) keyed by the flight's callsign — but only for the aircraft the user
-// actually taps, and we cache each result so a given flight is fetched at most once.
-const routeCache = {};   // callsign → { state:'pending'|'ok'|'none', origin, destination, airline }
-
+// ── ROUTE & AIRLINE on focus ─────────────────────────────
+// Map an adsbdb airport object to the little {code, place} we display.
 function fmtAirport(a){
   if(!a) return null;
   return { code: a.iata_code || a.icao_code || '', place: a.municipality || a.name || '' };
 }
 
-async function lookupRoute(callsign){
-  const cs=(callsign||'').trim();
-  if(!cs || routeCache[cs]) return;        // nothing to do, or already fetched/in-flight
-  routeCache[cs]={ state:'pending' };
-  refreshRouteIfFocused(cs);
+// ── FLIGHT ENRICHMENT (adsbdb) ───────────────────────────
+// One cache, keyed by the aircraft's ICAO id, holding everything we can learn that the
+// live ADS-B feed doesn't carry: the aircraft TYPE / REGISTRATION / MANUFACTURER / OWNER,
+// the operating AIRLINE, and the ORIGIN → DESTINATION route. adsbdb's combined endpoint
+// returns all of this in a single GET, so even a sparse feed (e.g. OpenSky, which omits
+// type/registration) still yields a rich panel and city labels. Looked up at most once per
+// aircraft; failures and unknown flights resolve to 'none' so we never invent data.
+const flightInfo = {};   // icao24 → { state:'pending'|'ok'|'none', type, reg, manufacturer, owner, airline, origin, destination }
 
-  // adsbdb returns the flight route (and airline) for a callsign. We try the API directly
-  // first; if CORS or the in-app viewer blocks it, we retry through public proxies. If
-  // every attempt fails — or the flight simply isn't in the database (military, GA,
-  // unscheduled) — we mark it 'none' and show "route unavailable" rather than inventing one.
-  const base=`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`;
+async function lookupFlight(f){
+  const icao=(f.icao24||'').trim();
+  if(!icao || flightInfo[icao]) return;          // nothing to do, or already fetched / in-flight
+  const cs=(f.callsign||'').trim();
+  flightInfo[icao]={ state:'pending' };
+  refreshInfoIfFocused(icao);
+
+  // The combined endpoint takes the Mode-S (ICAO hex) and, optionally, the callsign so it can
+  // attach the route. We try it directly, then through public CORS proxies as a fallback.
+  const path = cs
+    ? `v0/aircraft/${encodeURIComponent(icao)}?callsign=${encodeURIComponent(cs)}`
+    : `v0/aircraft/${encodeURIComponent(icao)}`;
+  const base = `https://api.adsbdb.com/${path}`;
   const urls=[ base,
     'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(base),
     'https://api.allorigins.win/raw?url='+encodeURIComponent(base) ];
@@ -1137,36 +1311,62 @@ async function lookupRoute(callsign){
       const r=await fetchT(u,7000);
       if(!r || !r.ok) continue;
       const j=await r.json();
-      const fr=j && j.response && j.response.flightroute;
-      if(fr && (fr.origin || fr.destination)){
-        routeCache[cs]={ state:'ok',
-          origin:fmtAirport(fr.origin), destination:fmtAirport(fr.destination),
-          airline:(fr.airline && fr.airline.name) || null };
+      const resp = j && j.response;
+      const ac = resp && resp.aircraft;        // aircraft block (type, reg, manufacturer, owner)
+      const fr = resp && resp.flightroute;      // route block (airline, origin, destination)
+      if(ac || fr){
+        flightInfo[icao]={
+          state:'ok',
+          type: ac ? (ac.type || ac.icao_type || null) : null,
+          reg:  ac ? (ac.registration || null) : null,
+          manufacturer: ac ? (ac.manufacturer || null) : null,
+          owner: ac ? (ac.registered_owner || null) : null,
+          airline: (fr && fr.airline && fr.airline.name) || null,
+          origin: fr ? fmtAirport(fr.origin) : null,
+          destination: fr ? fmtAirport(fr.destination) : null,
+        };
       }else{
-        routeCache[cs]={ state:'none' };   // valid response, but no route on file
+        flightInfo[icao]={ state:'none' };      // valid response but nothing on file
       }
-      refreshRouteIfFocused(cs);
+      refreshInfoIfFocused(icao);
       return;
     }catch(e){ /* try the next source */ }
   }
-  routeCache[cs]={ state:'none' };
-  refreshRouteIfFocused(cs);
+  flightInfo[icao]={ state:'none' };            // all sources failed → unavailable (never fabricate)
+  refreshInfoIfFocused(icao);
 }
 
-// Only repaint the route line if the still-focused aircraft is the one we just resolved.
-function refreshRouteIfFocused(cs){
-  if(!selectedIcao) return;
-  const f=flights.find(o=>o.icao24===selectedIcao);
-  if(f && (f.callsign||'').trim()===cs) renderRoute(f);
+// Throttled background enrichment so on-radar labels can show a city like the reference art.
+// We look up only the single nearest aircraft we don't yet know, at most once every 1.5 s,
+// which keeps adsbdb traffic gentle while gradually filling in the visible planes.
+let lastEnrich = 0;
+function maybeEnrich(list){
+  if(Date.now()-lastEnrich < 1500) return;
+  let best=null, bd=Infinity;
+  for(const f of list){
+    if(f.lat==null || !f.icao24 || flightInfo[f.icao24] || !(f.callsign||'').trim()) continue;
+    const d=haversine(HOME.lat,HOME.lon,f.lat,f.lon);
+    if(d<bd){ bd=d; best=f; }
+  }
+  if(best){ lastEnrich=Date.now(); lookupFlight(best); }
+}
+
+// Repaint the focused aircraft's detail only if it's the one we just resolved.
+function refreshInfoIfFocused(icao){
+  if(selectedIcao && selectedIcao===icao){
+    const f=flights.find(o=>o.icao24===selectedIcao);
+    if(f){ renderRoute(f); updateFocusPanel(); }
+  }
 }
 
 function renderRoute(f){
   const el=document.getElementById('fp-route');
   if(!el) return;
-  const rec=routeCache[(f.callsign||'').trim()];
-  // When we know the airline it's a nicer subtitle than the raw registration·type string.
-  if(rec && rec.state==='ok' && rec.airline){
-    document.getElementById('fp-from').textContent = rec.airline.toUpperCase();
+  const rec=flightInfo[f.icao24];
+  // Prefer the airline as the subtitle; fall back to the registered owner (e.g. private jets).
+  if(rec && rec.state==='ok'){
+    const sub = rec.airline || rec.owner || '';
+    if(sub) document.getElementById('fp-from').textContent = sub.toUpperCase();
   }
   if(!rec){ el.classList.remove('show'); el.innerHTML=''; return; }
   el.classList.add('show');
@@ -1174,9 +1374,8 @@ function renderRoute(f){
   if(rec.state==='none' || (!rec.origin && !rec.destination)){
     el.innerHTML='<span class="muted">route unavailable</span>'; return;
   }
-  const o=rec.origin, d=rec.destination;
   const side=(ap)=> ap ? `<b>${ap.code||'?'}</b> ${ap.place||''}`.trim() : '<span class="muted">?</span>';
-  el.innerHTML = `${side(o)}<span class="arrow">→</span>${side(d)}`;
+  el.innerHTML = `${side(rec.origin)}<span class="arrow">→</span>${side(rec.destination)}`;
 }
 
 function updateFocusPanel(){
@@ -1205,9 +1404,12 @@ function updateFocusPanel(){
   } else if(f.onground){ vrtTxt='on ground'; }
   document.getElementById('fp-vrt').innerHTML=vrtTxt;
 
+  // Aircraft type and registration: prefer the live feed, but fall back to the adsbdb
+  // lookup so the panel stays rich even when the feed (e.g. OpenSky) doesn't carry them.
+  const info=flightInfo[f.icao24];
   document.getElementById('fp-sqk').textContent = f.squawk || '—';
-  document.getElementById('fp-typ').textContent = f.type || '—';
-  document.getElementById('fp-reg').textContent = f.reg || '—';
+  document.getElementById('fp-typ').textContent = f.type || (info&&info.type) || '—';
+  document.getElementById('fp-reg').textContent = f.reg  || (info&&info.reg)  || '—';
 
   const {h,s}=altHSL(f.alt);
   const dot=document.getElementById('fp-dot');
@@ -1220,13 +1422,68 @@ function updateFocusPanel(){
   renderRoute(f);
 }
 
+// ── POINTER INPUT: tap-to-focus AND pinch-to-zoom ────────
+// We track every active pointer (finger) on the canvas. With one finger we treat a short,
+// still press as a tap that focuses the plane underneath. With two fingers we measure the
+// distance between them and scale the radar zoom by how that distance changes — a natural
+// pinch. The viewport meta disables the browser's own page-zoom, and touch-action:none on
+// the canvas stops Safari from hijacking the gesture, so the pinch drives OUR zoom only.
 const _fx=document.getElementById('sky-fx');
-_fx.addEventListener('pointerdown',e=>{
-  initAudio();                         // first tap satisfies the browser's audio-gesture rule
-  const r=_fx.getBoundingClientRect();
-  const hit=pickAt(e.clientX-r.left, e.clientY-r.top);
-  setFocus(hit?hit.icao24:null);
-});
+_fx.style.touchAction='none';
+
+const pointers=new Map();        // pointerId → {x,y}
+let pinchBaseDist=0, pinchBaseZoom=1, isPinching=false;
+let tap=null;                    // {x,y,t} candidate for a focusing tap
+
+function twoFingerDist(){
+  const pts=[...pointers.values()];
+  return Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+}
+
+function ptrDown(e){
+  initAudio();                   // first interaction unlocks the alert chime
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===1){
+    tap={ x:e.clientX, y:e.clientY, t:performance.now() };   // might become a focus tap
+  }else if(pointers.size===2){
+    isPinching=true; tap=null;                                // two fingers → it's a pinch, not a tap
+    pinchBaseDist=twoFingerDist(); pinchBaseZoom=zoom;
+  }
+}
+
+function ptrMove(e){
+  if(!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(isPinching && pointers.size>=2){
+    if(e.preventDefault) e.preventDefault();
+    const d=twoFingerDist();
+    if(pinchBaseDist>0) setZoom(pinchBaseZoom * d/pinchBaseDist);   // setZoom clamps + updates UI
+  }else if(tap){
+    // if the single finger wanders too far, it's a drag, not a tap → cancel focusing
+    if(Math.hypot(e.clientX-tap.x, e.clientY-tap.y) > 12) tap=null;
+  }
+}
+
+function endPointer(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size<2){ isPinching=false; pinchBaseDist=0; }
+  // a quick, still, single-finger press with no pinch → focus the plane under it
+  if(pointers.size===0 && tap){
+    const quick = performance.now()-tap.t < 500;
+    if(quick){
+      const r=_fx.getBoundingClientRect();
+      const hit=pickAt(tap.x-r.left, tap.y-r.top);
+      setFocus(hit?hit.icao24:null);
+    }
+    tap=null;
+  }
+}
+
+_fx.addEventListener('pointerdown',ptrDown);
+_fx.addEventListener('pointermove',ptrMove,{passive:false});
+_fx.addEventListener('pointerup',endPointer);
+_fx.addEventListener('pointercancel',e=>{ pointers.delete(e.pointerId); if(pointers.size<2){isPinching=false;pinchBaseDist=0;} tap=null; });
+
 document.getElementById('fp-close').addEventListener('click',()=>setFocus(null));
 
 // ── ZOOM ──────────────────────────────────────────────────
@@ -1235,11 +1492,11 @@ function updateRangeLabel(){
   if(el) el.textContent = Math.round(effRange())+' km';
 }
 function setZoom(z){
-  zoom=Math.max(1,Math.min(8,z));
+  zoom=Math.max(1,Math.min(MAX_ZOOM,z));
   const lvl=document.getElementById('zoom-level');
   if(lvl) lvl.textContent=zoom.toFixed(1)+'×';
   const zi=document.getElementById('zoom-in'), zo=document.getElementById('zoom-out');
-  if(zi) zi.disabled = zoom>=8-1e-9;
+  if(zi) zi.disabled = zoom>=MAX_ZOOM-1e-9;
   if(zo) zo.disabled = zoom<=1+1e-9;
   updateRangeLabel();
 }
