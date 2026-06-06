@@ -229,7 +229,7 @@
   <div id="title">
     <div class="over">Live · Overhead</div>
     <div class="main">The Sky Above</div>
-    <div class="sub">aircraft within <b>250&nbsp;km</b> · Ra'anana</div>
+    <div class="sub">aircraft within <b id="range-label">120&nbsp;km</b> · Ra'anana</div>
   </div>
 
   <div id="loc">
@@ -280,7 +280,8 @@
 <script>
 // ── CONFIG ───────────────────────────────────────────────
 const HOME = { lat: 32.18, lon: 34.84 };
-const RANGE_KM = 250;
+const RANGE_KM = 120;   // city-region scale: aircraft motion is visible here.
+                        // raise toward 250 for more sky / less apparent motion.
 const UPDATE_INTERVAL = 12000;
 const MAX_LABELS = 5;           // nearest N aircraft get full cards
 
@@ -651,7 +652,8 @@ function draw(now){
   });
 
   // ── range rings ──
-  const rings=[ {f:100/RANGE_KM,l:'100 km'}, {f:200/RANGE_KM,l:'200 km'}, {f:1,l:''} ];
+  const r1=Math.max(10,Math.round(RANGE_KM/3/10)*10), r2=Math.round(2*RANGE_KM/3/10)*10;
+  const rings=[ {f:r1/RANGE_KM,l:r1+' km'}, {f:r2/RANGE_KM,l:r2+' km'}, {f:1,l:''} ];
   rings.forEach((ring,i)=>{
     const rr=RAD*ring.f;
     ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2);
@@ -965,6 +967,7 @@ window.addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setT
 async function init(){
   resize();
   flights=[];
+  document.getElementById('range-label').textContent = RANGE_KM+' km';
   const fill=document.getElementById('l-fill'), msg=document.getElementById('l-msg');
   fill.style.width='35%'; msg.textContent='Fixing home position…';
   await new Promise(r=>setTimeout(r,400));
