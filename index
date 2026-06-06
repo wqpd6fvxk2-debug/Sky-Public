@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Sky Above — Nocturne</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=IBM+Plex+Mono:wght@300;400;500&display=swap');
+
+  :root{
+    --ink:#04050d;
+    --indigo:#0a0f29;
+    --core:#141b46;
+    --gold:#e9c884;
+    --gold-bright:#ffe1ad;
+    --gold-dim:rgba(233,200,132,0.55);
+    --cream:#f1e9d8;
+    --cream-dim:rgba(241,233,216,0.55);
+    --cyan:#9bd3d6;
+    --hair:rgba(233,200,132,0.22);
+    --glass:rgba(9,12,28,0.5);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);}
+  body{font-family:'IBM Plex Mono',monospace;color:var(--cream);}
+
+  #sky-bg,#sky-fx{position:fixed;inset:0;width:100vw;height:100vh;}
+  #sky-bg{z-index:0;}
+  #sky-fx{z-index:1;}
+
+  /* edge vignette to hide projector spill */
+  #vignette{
+    position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(ellipse 75% 75% at 50% 48%,
+      transparent 52%, rgba(4,5,13,0.55) 80%, rgba(4,5,13,0.92) 100%);
+  }
+  /* faint film grain */
+  #grain{
+    position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  #hud{position:fixed;inset:0;z-index:5;pointer-events:none;}
+
+  /* ── Title, top center ── */
+  #title{
+    position:absolute;top:42px;left:50%;transform:translateX(-50%);
+    text-align:center;
+  }
+  #title .over{
+    font-size:10px;letter-spacing:0.55em;text-transform:uppercase;
+    color:var(--gold-dim);font-weight:400;margin-bottom:6px;padding-left:0.55em;
+  }
+  #title .main{
+    font-family:'Cormorant Garamond',serif;font-weight:400;font-style:italic;
+    font-size:40px;letter-spacing:0.02em;color:var(--cream);
+    line-height:1;text-shadow:0 2px 40px rgba(233,200,132,0.28);
+  }
+  #title .sub{
+    margin-top:10px;font-size:10px;letter-spacing:0.32em;text-transform:uppercase;
+    color:var(--cream-dim);font-weight:300;
+  }
+  #title .sub b{color:var(--gold-dim);font-weight:400;}
+
+  /* ── Location, bottom left ── */
+  #loc{
+    position:absolute;left:36px;bottom:30px;
+    font-size:10px;letter-spacing:0.22em;line-height:2.1;color:var(--cream-dim);
+  }
+  #loc .city{color:var(--gold-dim);letter-spacing:0.34em;}
+  #loc .dot{
+    display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--gold);margin-right:7px;vertical-align:middle;
+    box-shadow:0 0 8px var(--gold);
+  }
+  #loc .dot.sim{background:#c98b6a;box-shadow:0 0 8px #c98b6a;}
+  #loc .dot.limit{background:#d6b24a;box-shadow:0 0 8px #d6b24a;}
+  #feed-word{vertical-align:middle;}
+
+  /* ── Ambient rotating caption, bottom center ── */
+  #caption{
+    position:absolute;bottom:34px;left:50%;transform:translateX(-50%);
+    width:min(620px,70vw);text-align:center;
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+    font-size:21px;letter-spacing:0.03em;color:var(--cream);
+    opacity:0;transition:opacity 1.6s ease;
+    text-shadow:0 2px 30px rgba(0,0,0,0.6);
+  }
+  #caption.show{opacity:0.82;}
+
+  /* ── Clock, bottom right ── */
+  #clock{
+    position:absolute;right:36px;bottom:28px;text-align:right;
+  }
+  #clock .time{
+    font-family:'Cormorant Garamond',serif;font-weight:300;
+    font-size:34px;letter-spacing:0.04em;color:var(--cream);line-height:1;
+    text-shadow:0 2px 24px rgba(233,200,132,0.2);
+  }
+  #clock .date{
+    margin-top:5px;font-size:9px;letter-spacing:0.3em;text-transform:uppercase;
+    color:var(--cream-dim);font-weight:300;
+  }
+
+  /* ── Loading ── */
+  #loading{
+    position:fixed;inset:0;z-index:50;background:var(--ink);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;
+    transition:opacity 1.4s ease;
+  }
+  #loading.fade{opacity:0;pointer-events:none;}
+  #loading .l-main{
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:300;
+    font-size:34px;color:var(--cream);letter-spacing:0.03em;
+    text-shadow:0 0 40px rgba(233,200,132,0.3);
+  }
+  #loading .l-sub{
+    font-size:9px;letter-spacing:0.4em;text-transform:uppercase;color:var(--gold-dim);
+  }
+  #loading .l-bar{width:240px;height:1px;background:rgba(233,200,132,0.15);overflow:hidden;}
+  #loading .l-fill{height:100%;width:0;background:var(--gold);box-shadow:0 0 10px var(--gold);transition:width 2.4s cubic-bezier(.4,0,.2,1);}
+  #loading .l-msg{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--cream-dim);}
+
+  /* ── MOBILE / PORTRAIT: declutter the bottom band ── */
+  @media (max-width: 640px){
+    #title{top:26px;}
+    #title .over{font-size:8px;letter-spacing:0.42em;margin-bottom:4px;}
+    #title .main{font-size:27px;}
+    #title .sub{font-size:8px;letter-spacing:0.24em;margin-top:7px;}
+
+    /* location → top-left, drop coordinates to save room */
+    #loc{top:18px;left:16px;bottom:auto;line-height:1.7;}
+    #loc > div:nth-child(3){display:none;}
+    #loc .city{font-size:9px;letter-spacing:0.2em;}
+
+    /* clock → top-right, compact */
+    #clock{top:14px;right:16px;bottom:auto;}
+    #clock .time{font-size:19px;letter-spacing:0.02em;}
+    #clock .date{font-size:7.5px;letter-spacing:0.18em;margin-top:2px;}
+
+    /* caption owns the bottom alone */
+    #caption{bottom:22px;width:90vw;font-size:15px;line-height:1.35;}
+  }
+  @media (max-width: 380px){
+    #title .main{font-size:24px;}
+    #caption{font-size:14px;}
+  }
+
+  /* ── FOCUS PANEL ── */
+  #focus-panel{
+    position:fixed; left:50%; bottom:26px;
+    transform:translateX(-50%) translateY(22px);
+    width:min(440px,90vw);
+    background:rgba(9,12,28,0.74);
+    border:1px solid var(--hair);
+    border-radius:14px; padding:15px 18px 16px;
+    backdrop-filter:blur(16px) saturate(125%);
+    -webkit-backdrop-filter:blur(16px) saturate(125%);
+    box-shadow:0 14px 60px rgba(0,0,0,0.55);
+    z-index:8; opacity:0; pointer-events:none;
+    transition:opacity .42s ease, transform .42s cubic-bezier(.2,.85,.25,1);
+  }
+  #focus-panel.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+  #focus-panel .fp-head{ display:flex; align-items:center; gap:11px; }
+  #focus-panel .fp-dot{
+    width:9px;height:9px;border-radius:50%;background:var(--gold);
+    box-shadow:0 0 12px var(--gold); flex:0 0 auto;
+  }
+  #focus-panel .fp-call{
+    font-family:'Cormorant Garamond',serif; font-weight:500; font-size:29px;
+    line-height:1; color:var(--cream); letter-spacing:.02em;
+  }
+  #focus-panel .fp-from{
+    margin-top:3px; font-size:9px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--gold-dim);
+  }
+  #focus-panel .fp-x{
+    position:absolute; top:11px; right:12px; width:24px; height:24px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--cream-dim); font-size:14px; cursor:pointer; border-radius:50%;
+    transition:color .2s, background .2s;
+  }
+  #focus-panel .fp-x:hover{ color:var(--cream); background:rgba(255,255,255,0.07); }
+  #focus-panel .fp-grid{
+    margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:13px 20px;
+  }
+  #focus-panel .fp-cell .k{
+    font-size:8.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--cream-dim);
+  }
+  #focus-panel .fp-cell .v{
+    margin-top:3px; font-size:15px; letter-spacing:.03em; color:var(--cream);
+  }
+  #focus-panel .fp-cell .v small{ color:var(--gold-dim); font-size:11px; margin-left:3px; }
+
+  /* ── DIAGNOSTICS (only when no signal) ── */
+  #diag{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(440px,86vw);
+    background:rgba(8,11,26,0.82);
+    border:1px solid rgba(214,138,90,0.35);
+    border-radius:12px; padding:16px 18px;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    z-index:9; opacity:0; pointer-events:none; transition:opacity .4s ease;
+    font-size:11px; line-height:1.6; letter-spacing:.02em; color:var(--cream-dim);
+  }
+  #diag.show{ opacity:1; }
+  #diag .diag-title{
+    font-size:9px; letter-spacing:.32em; text-transform:uppercase;
+    color:#d6a263; margin-bottom:10px;
+  }
+  #diag-origin{ font-size:9.5px; color:rgba(241,233,216,0.4); margin-bottom:10px; word-break:break-all; }
+  #diag-list .row{ display:flex; justify-content:space-between; gap:12px; padding:2px 0; }
+  #diag-list .row .src{ color:rgba(241,233,216,0.7); }
+  #diag-list .row .res{ text-align:right; }
+  #diag-list .row .res.ok{ color:#8fd0a0; }
+  #diag-list .row .res.bad{ color:#d68a8a; }
+  #diag-hint{ margin-top:11px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.07);
+    font-size:10px; color:rgba(241,233,216,0.55); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<canvas id="sky-bg"></canvas>
+<canvas id="sky-fx"></canvas>
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<div id="hud">
+  <div id="title">
+    <div class="over">Live · Overhead</div>
+    <div class="main">The Sky Above</div>
+    <div class="sub">aircraft within <b>250&nbsp;km</b> · Ra'anana</div>
+  </div>
+
+  <div id="loc">
+    <div><span class="dot" id="feed-dot"></span><span id="feed-word">CONNECTING</span></div>
+    <div class="city">RA'ANANA · IL</div>
+    <div>32.18°N&nbsp;&nbsp;34.84°E</div>
+  </div>
+
+  <div id="caption"></div>
+
+  <div id="diag">
+    <div class="diag-title">SIGNAL DIAGNOSTICS</div>
+    <div id="diag-origin"></div>
+    <div id="diag-list"></div>
+    <div id="diag-hint"></div>
+  </div>
+
+  <div id="clock">
+    <div class="time" id="clock-time">--:--</div>
+    <div class="date" id="clock-date">—</div>
+  </div>
+</div>
+
+<div id="focus-panel">
+  <div class="fp-x" id="fp-close">✕</div>
+  <div class="fp-head">
+    <span class="fp-dot" id="fp-dot"></span>
+    <div>
+      <div class="fp-call" id="fp-call">—</div>
+      <div class="fp-from" id="fp-from"></div>
+    </div>
+  </div>
+  <div class="fp-grid">
+    <div class="fp-cell"><div class="k">Altitude</div><div class="v" id="fp-alt">—</div></div>
+    <div class="fp-cell"><div class="k">Speed</div><div class="v" id="fp-spd">—</div></div>
+    <div class="fp-cell"><div class="k">Heading</div><div class="v" id="fp-hdg">—</div></div>
+    <div class="fp-cell"><div class="k">Distance</div><div class="v" id="fp-dist">—</div></div>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="l-main">The Sky Above</div>
+  <div class="l-sub">Nocturne</div>
+  <div class="l-bar"><div class="l-fill" id="l-fill"></div></div>
+  <div class="l-msg" id="l-msg">Charting the heavens…</div>
+</div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────
+const HOME = { lat: 32.18, lon: 34.84 };
+const RANGE_KM = 250;
+const UPDATE_INTERVAL = 12000;
+const MAX_LABELS = 5;           // nearest N aircraft get full cards
+
+// ── STATE ────────────────────────────────────────────────
+let W,H,CX,CY,RAD;
+let flights = [];
+let selectedIcao = null;
+let feedMeta = { source:null, sub:null, error:null, connected:false };
+let stars = [], dust = [], nebula = [], glints = [];
+let t0 = performance.now();
+
+// ── MATH ─────────────────────────────────────────────────
+function haversine(la1,lo1,la2,lo2){
+  const R=6371,dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function bearing(la1,lo1,la2,lo2){
+  const dLo=(lo2-lo1)*Math.PI/180;
+  const y=Math.sin(dLo)*Math.cos(la2*Math.PI/180);
+  const x=Math.cos(la1*Math.PI/180)*Math.sin(la2*Math.PI/180)-Math.sin(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.cos(dLo);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function latLonToXY(lat,lon){
+  const dist=haversine(HOME.lat,HOME.lon,lat,lon);
+  const bear=bearing(HOME.lat,HOME.lon,lat,lon);
+  const r=(dist/RANGE_KM)*RAD;
+  const ang=(bear-90)*Math.PI/180;
+  return { x:CX+r*Math.cos(ang), y:CY+r*Math.sin(ang), dist, bear, r };
+}
+// altitude (m) → elegant warm→cool hue {h, s}
+function altHSL(altM){
+  const ft=altM*3.28084;
+  const f=Math.max(0,Math.min(1,ft/42000));   // 0..1
+  // amber (38) → cream (46) → soft cyan (185)
+  const h = f<0.5 ? 38+(46-38)*(f/0.5) : 46+(185-46)*((f-0.5)/0.5);
+  const s = f<0.5 ? 70-20*(f/0.5) : 50-15*((f-0.5)/0.5);
+  return { h:Math.round(h), s:Math.round(s) };
+}
+// build a VALID hsla string: hsla(h, s%, l%, a)
+function acol(altM, l, a){
+  const {h,s}=altHSL(altM);
+  return `hsla(${h},${s}%,${l}%,${a})`;
+}
+function compass16(bear){
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(bear/22.5)%16];
+}
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+// ── SKY GENERATION ───────────────────────────────────────
+function buildSky(){
+  stars=[]; dust=[]; nebula=[]; glints=[];
+  // faint dust (baked to bg)
+  for(let i=0;i<360;i++){
+    dust.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*0.9+0.2, a:Math.random()*0.4+0.08 });
+  }
+  // twinkling stars (fx)
+  for(let i=0;i<150;i++){
+    stars.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.3+0.4,
+      base:Math.random()*0.5+0.3, ph:Math.random()*Math.PI*2, sp:Math.random()*1.5+0.4 });
+  }
+  // a few bright glints (4-point sparkle)
+  for(let i=0;i<14;i++){
+    glints.push({ x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.6+1.4,
+      ph:Math.random()*Math.PI*2, sp:Math.random()*0.8+0.3,
+      h:Math.random()<0.5?46:190, s:Math.random()<0.5?40:35 });
+  }
+  // nebula blobs (warm + cool, drifting)
+  const palette=[ '74,47,94', '120,70,90', '40,70,90', '90,75,45', '60,40,80' ];
+  for(let i=0;i<6;i++){
+    nebula.push({
+      fx:Math.random(), fy:Math.random(),
+      r:(Math.random()*0.4+0.35)*Math.max(W,H),
+      col:palette[i%palette.length],
+      a:Math.random()*0.05+0.03,
+      ph:Math.random()*Math.PI*2, amp:Math.random()*0.015+0.006, sp:Math.random()*0.12+0.04,
+    });
+  }
+}
+
+function paintBg(){
+  const c=document.getElementById('sky-bg'), ctx=c.getContext('2d');
+  c.width=W; c.height=H;
+  // deep radial gradient — luminous at center, near-black at edges
+  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.max(W,H)*0.75);
+  g.addColorStop(0,'#171f4e');
+  g.addColorStop(0.35,'#0e1436');
+  g.addColorStop(0.7,'#080c22');
+  g.addColorStop(1,'#04050d');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+
+  // faint milky-way band (diagonal denser dust)
+  ctx.save();
+  ctx.translate(CX,CY); ctx.rotate(-0.5);
+  const band=ctx.createLinearGradient(0,-H*0.12,0,H*0.12);
+  band.addColorStop(0,'rgba(120,120,170,0)');
+  band.addColorStop(0.5,'rgba(150,150,200,0.05)');
+  band.addColorStop(1,'rgba(120,120,170,0)');
+  ctx.fillStyle=band; ctx.fillRect(-W,-H*0.12,W*2,H*0.24);
+  ctx.restore();
+
+  // dust
+  dust.forEach(d=>{
+    ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(210,220,255,${d.a})`; ctx.fill();
+  });
+
+  // crescent moon — elegant, top-left
+  const mx=W*0.13, my=H*0.16, mr=Math.min(W,H)*0.055;
+  const halo=ctx.createRadialGradient(mx,my,mr*0.3,mx,my,mr*3.4);
+  halo.addColorStop(0,'rgba(255,240,210,0.22)');
+  halo.addColorStop(1,'rgba(255,240,210,0)');
+  ctx.fillStyle=halo; ctx.beginPath(); ctx.arc(mx,my,mr*3.4,0,Math.PI*2); ctx.fill();
+  const mg=ctx.createRadialGradient(mx-mr*0.3,my-mr*0.3,mr*0.2,mx,my,mr);
+  mg.addColorStop(0,'#fdf3d8'); mg.addColorStop(1,'#e7d3a4');
+  ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(mx,my,mr,0,Math.PI*2); ctx.fill();
+  // carve crescent
+  ctx.globalCompositeOperation='destination-out';
+  ctx.beginPath(); ctx.arc(mx+mr*0.55,my-mr*0.25,mr*0.95,0,Math.PI*2); ctx.fill();
+  ctx.globalCompositeOperation='source-over';
+}
+
+// ── REAL DATA FEED (phone-only: browser-direct, no local proxy) ──
+// Tries direct CORS-enabled APIs first, then OpenSky through public CORS
+// proxies (so even a no-CORS API still works). Real sources only.
+const NM = Math.round(RANGE_KM/1.852);   // radius in nautical miles
+const fx4 = n => n.toFixed(4);
+function openskyURL(){
+  const mLat=RANGE_KM/111, mLon=(RANGE_KM/111)*1.3;
+  return `https://opensky-network.org/api/states/all?lamin=${fx4(HOME.lat-mLat)}&lomin=${fx4(HOME.lon-mLon)}&lamax=${fx4(HOME.lat+mLat)}&lomax=${fx4(HOME.lon+mLon)}`;
+}
+const adsblolURL = () => `https://api.adsb.lol/v2/lat/${HOME.lat}/lon/${HOME.lon}/dist/${NM}`;
+const airplURL   = () => `https://api.airplanes.live/v2/point/${HOME.lat}/${HOME.lon}/${NM}`;
+
+const SOURCES=[
+  { label:'ADSB.LOL',       url:adsblolURL, parse:parseAdsbx },
+  { label:'AIRPLANES.LIVE', url:airplURL,   parse:parseAdsbx },
+  { label:'OPENSKY',        url:()=>`https://corsproxy.io/?url=${encodeURIComponent(openskyURL())}`,            parse:parseProxy },
+  { label:'OPENSKY',        url:()=>`https://api.allorigins.win/raw?url=${encodeURIComponent(openskyURL())}`,   parse:parseProxy },
+  { label:'ADSB.LOL',       url:()=>`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(adsblolURL())}`, parse:parseAdsbx },
+];
+
+// OpenSky state-vector arrays (alt metres, velocity m/s)
+function parseProxy(data){
+  if(!data || !data.states) return [];
+  return data.states.map(s=>({
+    icao24:s[0], callsign:(s[1]||'').trim()||s[0],
+    lat:s[6], lon:s[5], alt:Math.round(s[7]||s[13]||0),
+    velocity:s[9]||0, heading:Math.round(s[10]||0),
+    origin_country:s[2]||'', trail:[],
+  })).filter(f=>f.lat!=null&&f.lon!=null);
+}
+
+// ADSB-Exchange-compatible (adsb.lol / airplanes.live): alt FEET, gs KNOTS
+function parseAdsbx(data){
+  const list=(data&&(data.ac||data.aircraft))||[];
+  return list.map(a=>{
+    const altFt=(typeof a.alt_baro==='number')?a.alt_baro:0;   // 'ground' → 0
+    const gsKn =(typeof a.gs==='number')?a.gs:0;
+    const sub=[a.r,a.t].filter(Boolean).join(' · ');           // registration · type (real)
+    return {
+      icao24:(a.hex||'').trim(),
+      callsign:(a.flight||'').trim()|| (a.r||a.hex||'').trim(),
+      lat:a.lat, lon:a.lon,
+      alt:altFt*0.3048,            // → metres
+      velocity:gsKn*0.514444,      // → m/s
+      heading:Math.round(a.track ?? a.true_heading ?? 0),
+      origin_country:sub, trail:[],
+    };
+  }).filter(f=>f.lat!=null&&f.lon!=null);
+}
+
+let lastDiag=[];
+// Some in-app webviews proxy fetch via postMessage and try to structured-clone
+// the options. AbortSignal is NOT cloneable → "object can not be cloned".
+// So: call fetch(url) with NO options, and time out via Promise.race instead.
+function fetchT(url, ms){
+  return Promise.race([
+    fetch(url),
+    new Promise((_, rej)=> setTimeout(()=> rej(new Error('timeout')), ms||8000)),
+  ]);
+}
+async function fetchFeed(){
+  feedMeta={ source:null, sub:null, error:null, connected:false };
+  lastDiag=[];
+  let sawNetwork=false;
+  for(const src of SOURCES){
+    const host=(()=>{ try{ return new URL(src.url()).host; }catch(e){ return src.url(); } })();
+    try{
+      const res=await fetchT(src.url(), 8000);
+      sawNetwork=true;
+      if(res.status===429){ feedMeta.error='rate_limited'; lastDiag.push({label:src.label,host,note:'429 rate-limited'}); continue; }
+      if(!res.ok){ lastDiag.push({label:src.label,host,note:'HTTP '+res.status}); continue; }
+      const data=await res.json();
+      const list=src.parse(data);
+      lastDiag.push({label:src.label,host,note:'OK · '+list.length+' aircraft',ok:true});
+      feedMeta.source=src.label; feedMeta.connected=true;
+      return list;                 // may be [] = real but quiet sky
+    }catch(e){
+      const why = (e.message||'')==='timeout' ? 'timeout'
+                : /clone/i.test(e.message||'') ? 'viewer blocked fetch (sandbox)'
+                : /Failed to fetch|NetworkError|Load failed/i.test(e.message||'') ? 'blocked (CORS / CSP / offline)'
+                : (e.message||'error');
+      lastDiag.push({label:src.label,host,note:why});
+    }
+  }
+  feedMeta.error = feedMeta.error || (sawNetwork ? 'all_failed' : 'blocked');
+  return null;                     // every real source failed
+}
+
+// ── DRAW AIRCRAFT GLYPH ──────────────────────────────────
+function drawJet(ctx,size,color){
+  // elegant top-down jet, nose at +x
+  ctx.beginPath();
+  ctx.moveTo(size,0);
+  ctx.lineTo(size*0.1,size*0.16);
+  ctx.lineTo(-size*0.15,size*0.16);
+  ctx.lineTo(-size*0.55,size*0.5);     // wing back-right
+  ctx.lineTo(-size*0.35,size*0.16);
+  ctx.lineTo(-size*0.7,size*0.18);
+  ctx.lineTo(-size*0.78,size*0.42);    // tail
+  ctx.lineTo(-size,0);
+  ctx.lineTo(-size*0.78,-size*0.42);
+  ctx.lineTo(-size*0.7,-size*0.18);
+  ctx.lineTo(-size*0.35,-size*0.16);
+  ctx.lineTo(-size*0.55,-size*0.5);
+  ctx.lineTo(-size*0.15,-size*0.16);
+  ctx.lineTo(size*0.1,-size*0.16);
+  ctx.closePath();
+  ctx.fillStyle=color;
+  ctx.fill();
+}
+
+// ── LABEL CARDS: compute geometry → de-collide → render ──
+function computeCard(ctx,f,pos,selected){
+  const ft=Math.round(f.alt*3.28084).toLocaleString();
+  const kn=Math.round(f.velocity*1.94384);
+  const call=(f.callsign||f.icao24).trim();
+  const sub=f.origin_country||'';
+  const stat=`${ft} ft · ${kn} kn`;
+  const scale=W<640?0.9:1;
+  ctx.font=`500 ${13*scale}px 'IBM Plex Mono'`;
+  const w=Math.max(ctx.measureText(call).width, ctx.measureText(sub).width*1.05, ctx.measureText(stat).width)+24*scale;
+  const h=(selected?60:50)*scale;
+  // start: outward from centre, above the plane
+  let x = pos.x<CX ? pos.x+16 : pos.x-w-16;
+  let y = pos.y-h-12;
+  return { f,pos,selected,call,sub,stat,w,h,x,y,scale };
+}
+
+function decollide(cards,top,bottom){
+  cards.forEach(c=>{
+    c.x=Math.max(12,Math.min(W-c.w-12,c.x));
+    c.y=Math.max(top,Math.min(bottom-c.h,c.y));
+  });
+  for(let pass=0;pass<10;pass++){
+    for(let i=0;i<cards.length;i++)for(let j=i+1;j<cards.length;j++){
+      const A=cards[i],B=cards[j];
+      if(A.x<B.x+B.w && B.x<A.x+A.w && A.y<B.y+B.h && B.y<A.y+A.h){
+        const ov=(Math.min(A.y+A.h,B.y+B.h)-Math.max(A.y,B.y))/2+4;
+        if(A.y<=B.y){ A.y-=ov; B.y+=ov; } else { A.y+=ov; B.y-=ov; }
+      }
+    }
+    cards.forEach(c=>{ c.y=Math.max(top,Math.min(bottom-c.h,c.y)); });
+  }
+}
+
+function renderCard(ctx,c){
+  const {f,pos,selected,call,sub,stat,w,h,x,y,scale}=c;
+  // leader line to plane
+  const ax=x+(pos.x<x?6:w-6), ay=y+(pos.y<y?6:h-6);
+  ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(ax,ay);
+  ctx.strokeStyle=acol(f.alt,60,selected?0.5:0.28); ctx.lineWidth=0.6; ctx.stroke();
+  // body
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.5)'; ctx.shadowBlur=18; ctx.shadowOffsetY=4;
+  roundRect(ctx,x,y,w,h,8);
+  ctx.fillStyle=selected?'rgba(14,18,40,0.8)':'rgba(9,12,28,0.62)'; ctx.fill();
+  ctx.shadowColor='transparent'; ctx.shadowBlur=0; ctx.shadowOffsetY=0;
+  roundRect(ctx,x,y,w,h,8);
+  ctx.strokeStyle=acol(f.alt,60,selected?0.5:0.3); ctx.lineWidth=1; ctx.stroke();
+  // accent dot
+  ctx.beginPath(); ctx.arc(x+13,y+15*scale,3.2,0,Math.PI*2);
+  ctx.fillStyle=acol(f.alt,72,1); ctx.shadowColor=acol(f.alt,72,1); ctx.shadowBlur=8; ctx.fill(); ctx.shadowBlur=0;
+  // text
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.font=`500 ${14*scale}px 'IBM Plex Mono'`; ctx.fillStyle='#f4ecdc';
+  ctx.fillText(call, x+24, y+20*scale);
+  ctx.font=`400 ${12*scale}px 'IBM Plex Mono'`; ctx.fillStyle='rgba(233,200,132,0.85)';
+  ctx.fillText(sub, x+13, y+36*scale);
+  ctx.font=`300 ${10*scale}px 'IBM Plex Mono'`; ctx.fillStyle='rgba(241,233,216,0.5)';
+  ctx.fillText(stat, x+13, y+48*scale);
+  if(selected){
+    ctx.fillStyle='rgba(155,211,214,0.7)';
+    ctx.fillText(`${compass16(f.heading)} · ${Math.round(pos.dist)} km`, x+13, y+h-5);
+  }
+  ctx.restore();
+}
+
+// ── COMPASS (corner) ─────────────────────────────────────
+function drawCompass(ctx){
+  if(W<640) return;   // ring already carries N/E/S/W; keep mobile clean
+  const r=26, x=W-70, y=110;
+  ctx.save();
+  ctx.strokeStyle='rgba(233,200,132,0.3)'; ctx.lineWidth=0.8;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x,y,r+4,0,Math.PI*2);
+  ctx.strokeStyle='rgba(233,200,132,0.12)'; ctx.stroke();
+  ['N','E','S','W'].forEach((d,i)=>{
+    const a=(i*90-90)*Math.PI/180;
+    const tx=x+(r+13)*Math.cos(a), ty=y+(r+13)*Math.sin(a);
+    ctx.font="400 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle= d==='N'?'rgba(233,200,132,0.85)':'rgba(241,233,216,0.4)';
+    ctx.fillText(d,tx,ty);
+  });
+  // north needle
+  ctx.beginPath();
+  ctx.moveTo(x,y-r*0.7); ctx.lineTo(x-3.5,y); ctx.lineTo(x+3.5,y); ctx.closePath();
+  ctx.fillStyle='rgba(233,200,132,0.75)'; ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x,y+r*0.7); ctx.lineTo(x-3.5,y); ctx.lineTo(x+3.5,y); ctx.closePath();
+  ctx.fillStyle='rgba(241,233,216,0.2)'; ctx.fill();
+  ctx.restore();
+}
+
+// ── MAIN DRAW ────────────────────────────────────────────
+function draw(now){
+  const c=document.getElementById('sky-fx'), ctx=c.getContext('2d');
+  const tt=(now-t0)/1000;
+  ctx.clearRect(0,0,W,H);
+
+  // drifting nebula
+  ctx.globalCompositeOperation='screen';
+  nebula.forEach(n=>{
+    const nx=(n.fx + Math.cos(tt*n.sp+n.ph)*n.amp)*W;
+    const ny=(n.fy + Math.sin(tt*n.sp*0.8+n.ph)*n.amp)*H;
+    const g=ctx.createRadialGradient(nx,ny,0,nx,ny,n.r);
+    g.addColorStop(0,`rgba(${n.col},${n.a})`);
+    g.addColorStop(1,`rgba(${n.col},0)`);
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(nx,ny,n.r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalCompositeOperation='source-over';
+
+  // twinkle stars
+  stars.forEach(s=>{
+    const a=s.base*(0.55+0.45*Math.sin(tt*s.sp+s.ph));
+    ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(240,244,255,${a})`; ctx.fill();
+  });
+  // glints
+  glints.forEach(g=>{
+    const a=Math.max(0,0.4+0.5*Math.sin(tt*g.sp+g.ph));
+    ctx.save(); ctx.translate(g.x,g.y);
+    ctx.strokeStyle=`hsla(${g.h},${g.s}%,80%,${a})`; ctx.lineWidth=0.7;
+    const L=g.r*3.2;
+    ctx.beginPath(); ctx.moveTo(-L,0); ctx.lineTo(L,0); ctx.moveTo(0,-L); ctx.lineTo(0,L); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,g.r,0,Math.PI*2); ctx.fillStyle=`hsla(${g.h},${g.s}%,85%,${Math.min(1,a+0.2)})`; ctx.fill();
+    ctx.restore();
+  });
+
+  // ── range rings ──
+  const rings=[ {f:100/RANGE_KM,l:'100 km'}, {f:200/RANGE_KM,l:'200 km'}, {f:1,l:''} ];
+  rings.forEach((ring,i)=>{
+    const rr=RAD*ring.f;
+    ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2);
+    ctx.setLineDash(i===2?[2,9]:[1,7]);
+    ctx.strokeStyle=i===2?'rgba(233,200,132,0.22)':'rgba(233,200,132,0.12)';
+    ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
+    if(ring.l){
+      ctx.font="300 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle='rgba(233,200,132,0.4)';
+      ctx.fillText(ring.l, CX, CY-rr);
+    }
+  });
+  // outer edge soft glow ring
+  ctx.beginPath(); ctx.arc(CX,CY,RAD,0,Math.PI*2);
+  ctx.strokeStyle='rgba(233,200,132,0.18)'; ctx.lineWidth=1.2;
+  ctx.shadowColor='rgba(233,200,132,0.25)'; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
+
+  // cardinal letters on outer ring
+  [['N',0],['E',90],['S',180],['W',270]].forEach(([d,deg])=>{
+    const a=(deg-90)*Math.PI/180;
+    const tx=CX+(RAD+22)*Math.cos(a), ty=CY+(RAD+22)*Math.sin(a);
+    ctx.font="400 11px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=d==='N'?'rgba(233,200,132,0.6)':'rgba(241,233,216,0.3)';
+    ctx.fillText(d,tx,ty);
+  });
+
+  // ── HOME marker ──
+  const hp=0.5+0.5*Math.sin(tt*1.1);
+  const hg=ctx.createRadialGradient(CX,CY,0,CX,CY,34);
+  hg.addColorStop(0,`rgba(255,225,173,${0.18+0.08*hp})`); hg.addColorStop(1,'rgba(255,225,173,0)');
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(CX,CY,34,0,Math.PI*2); ctx.fill();
+  // little house glyph in gold line
+  ctx.save(); ctx.translate(CX,CY-1);
+  ctx.strokeStyle='#ffe1ad'; ctx.lineWidth=1.4; ctx.lineJoin='round';
+  ctx.shadowColor='rgba(255,225,173,0.7)'; ctx.shadowBlur=10;
+  ctx.beginPath();
+  ctx.moveTo(-7,1); ctx.lineTo(-7,8); ctx.lineTo(7,8); ctx.lineTo(7,1);   // walls
+  ctx.moveTo(-9,1); ctx.lineTo(0,-7); ctx.lineTo(9,1);                    // roof
+  ctx.stroke();
+  ctx.shadowBlur=0; ctx.restore();
+  ctx.font="400 9px 'IBM Plex Mono'"; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillStyle='rgba(241,233,216,0.6)';
+  ctx.save(); ctx.translate(0,0);
+  ctx.fillText('H O M E', CX, CY+16);
+  ctx.restore();
+
+  // ── aircraft ──
+  const inRange=flights.filter(f=>f.lat!=null&&f.lon!=null)
+    .map(f=>({f,pos:latLonToXY(f.lat,f.lon)}))
+    .filter(o=>o.pos.r<=RAD*1.02)
+    .sort((a,b)=>a.pos.dist-b.pos.dist);
+
+  const focused = selectedIcao ? inRange.find(o=>o.f.icao24===selectedIcao) : null;
+
+  // trails + glyphs
+  inRange.forEach(({f,pos})=>{
+    const sel=selectedIcao===f.icao24;
+    const dim = (focused && !sel) ? 0.22 : 1;   // recede everything but the focused flight
+
+    // contrail
+    if(f.trail&&f.trail.length>1){
+      for(let i=1;i<f.trail.length;i++){
+        const p0=latLonToXY(f.trail[i-1].lat,f.trail[i-1].lon);
+        const p1=latLonToXY(f.trail[i].lat,f.trail[i].lon);
+        const a=(i/f.trail.length)*0.5;
+        ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y);
+        ctx.strokeStyle=acol(f.alt,62,a*dim); ctx.lineWidth=1.1; ctx.stroke();
+      }
+      const last=latLonToXY(f.trail[f.trail.length-1].lat,f.trail[f.trail.length-1].lon);
+      ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(pos.x,pos.y);
+      ctx.strokeStyle=acol(f.alt,62,0.45*dim); ctx.lineWidth=1.1; ctx.stroke();
+    }
+
+    // soft glow under jet
+    const gr=sel?22:13;
+    const gg=ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,gr);
+    gg.addColorStop(0,acol(f.alt,62,(sel?0.55:0.32)*dim)); gg.addColorStop(1,acol(f.alt,62,0));
+    ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(pos.x,pos.y,gr,0,Math.PI*2); ctx.fill();
+
+    // jet glyph
+    ctx.save();
+    ctx.translate(pos.x,pos.y);
+    ctx.rotate((f.heading-90)*Math.PI/180);
+    ctx.shadowColor=acol(f.alt,70,0.8*dim); ctx.shadowBlur=sel?13:7;
+    drawJet(ctx, sel?10:7, acol(f.alt, sel?88:70, (sel?1:0.95)*dim));
+    ctx.restore();
+    ctx.shadowBlur=0;
+  });
+
+  // focus reticle on the selected aircraft
+  if(focused){
+    const p=focused.pos; const {h:fh,s:fs}=altHSL(focused.f.alt);
+    const C=(a)=>`hsla(${fh},${fs}%,78%,${a})`;
+    const pulse=(Math.sin(tt*2.3)+1)/2;
+    // rotating dashed ring
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(tt*0.5);
+    ctx.strokeStyle=C(0.85); ctx.lineWidth=1.3; ctx.setLineDash([3,7]);
+    ctx.beginPath(); ctx.arc(0,0,19,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    // corner brackets
+    ctx.strokeStyle=C(0.6); ctx.lineWidth=1.2;
+    for(let k=0;k<4;k++){
+      const a0=k*Math.PI/2 + Math.PI/4;
+      ctx.beginPath();
+      ctx.arc(0,0,26, a0-0.22, a0+0.22);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // expanding pulse
+    ctx.beginPath(); ctx.arc(p.x,p.y,19+pulse*12,0,Math.PI*2);
+    ctx.strokeStyle=C(0.45*(1-pulse)); ctx.lineWidth=1; ctx.stroke();
+  }
+
+  // floating labels only when NOT focused (the panel carries detail while focused)
+  if(!focused){
+    const maxLabels = W<640 ? 3 : 5;
+    const topMargin = W<640 ? 152 : 88;
+    const botMargin = W<640 ? H-94 : H-78;
+    const cards=[];
+    const chosen=inRange.slice(0,maxLabels);
+    chosen.forEach(({f,pos})=> cards.push(computeCard(ctx,f,pos,false)));
+    decollide(cards,topMargin,botMargin);
+    cards.forEach(c=>renderCard(ctx,c));
+  }
+
+  drawCompass(ctx);
+}
+
+// ── INTERP + LOOP ────────────────────────────────────────
+let lastFrame=0, errLogged=false;
+function loop(now){
+  requestAnimationFrame(loop);   // schedule first — a bad frame can never break the chain
+  try{
+    const dt=lastFrame?Math.min(0.1,(now-lastFrame)/1000):0.016;
+    lastFrame=now;
+    // dead-reckon real aircraft smoothly between polls (snap to truth on refresh)
+    flights.forEach(f=>{
+      if(!f.velocity||f.velocity<5||f.lat==null)return;
+      const h=f.heading*Math.PI/180, d=f.velocity*dt;
+      f.lat+=(d*Math.cos(h))/111000;
+      f.lon+=(d*Math.sin(h))/(111000*Math.cos(f.lat*Math.PI/180));
+    });
+    draw(now);
+  }catch(e){
+    if(!errLogged){ console.error('draw error:',e); errLogged=true; }
+  }
+}
+
+// ── FETCH LOOP ───────────────────────────────────────────
+async function refresh(){
+  const data=await fetchFeed();
+  const dot=document.getElementById('feed-dot'), word=document.getElementById('feed-word');
+  if(data!==null){
+    // carry trails across refreshes by icao24
+    data.forEach(f=>{
+      const old=flights.find(o=>o.icao24===f.icao24);
+      if(old){ f.trail=[...(old.trail||[]),{lat:old.lat,lon:old.lon}]; if(f.trail.length>16)f.trail.shift(); }
+    });
+    flights=data;
+    dot.className='dot';
+    word.textContent = 'LIVE · '+(feedMeta.source||'');
+  }else{
+    flights=[];                       // real-only: no data → empty sky, never fake
+    dot.className = feedMeta.error==='rate_limited' ? 'dot limit' : 'dot sim';
+    word.textContent = feedMeta.error==='rate_limited' ? 'RATE LIMITED'
+                     : feedMeta.error==='blocked'      ? 'OPEN IN SAFARI'
+                     : 'NO SIGNAL';
+  }
+  if(selectedIcao) updateFocusPanel();
+  renderDiag();
+  updateCaption();
+}
+
+// ── DIAGNOSTICS PANEL (shown only when no signal) ────────
+function renderDiag(){
+  const d=document.getElementById('diag');
+  if(feedMeta.connected){ d.classList.remove('show'); return; }
+  const origin = location.protocol==='file:'
+    ? 'origin: local file (file://)'
+    : 'origin: '+location.protocol+'//'+(location.host||'?');
+  document.getElementById('diag-origin').textContent = origin;
+  document.getElementById('diag-list').innerHTML =
+    (lastDiag.length?lastDiag:[{label:'—',host:'no attempts',note:'—'}]).map(r=>
+      `<div class="row"><span class="src">${r.label} · ${r.host}</span><span class="res ${r.ok?'ok':'bad'}">${r.note}</span></div>`
+    ).join('');
+  let hint;
+  if(feedMeta.error==='blocked'){
+    hint = location.protocol==='file:'
+      ? 'All requests blocked. A local file can’t reach these APIs reliably — host the page over https and open it in Safari.'
+      : 'All requests blocked (CORS / CSP / sandbox). If you’re in an in-app viewer, open this page in Safari. If you’re already in Safari, the APIs are refusing browser calls — we’ll add a tiny hosted relay.';
+  } else if(feedMeta.error==='rate_limited'){
+    hint = 'A source rate-limited us. Give it a minute; it retries automatically.';
+  } else {
+    hint = 'Sources reachable but returning errors — likely temporarily down. Retrying every 12s.';
+  }
+  document.getElementById('diag-hint').textContent = hint;
+  d.classList.add('show');
+}
+
+// ── ROTATING CAPTION ─────────────────────────────────────
+const NUM=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty'];
+function spell(n){ return n<=20?NUM[n]:String(n); }
+let capIdx=0;
+function updateCaption(){
+  const el=document.getElementById('caption');
+  if(selectedIcao){ el.classList.remove('show'); return; }   // panel owns the bottom while focused
+  const arr=flights.filter(f=>f.lat!=null).map(f=>({f,d:haversine(HOME.lat,HOME.lon,f.lat,f.lon)})).filter(o=>o.d<=RANGE_KM).sort((a,b)=>a.d-b.d);
+  const lines=[];
+  if(arr.length){
+    if(!everFocused) lines.push('Tap any aircraft to focus');
+    const n=arr.length;
+    lines.push(`${spell(n).charAt(0).toUpperCase()+spell(n).slice(1)} aircraft aloft within reach`);
+    const near=arr[0].f;
+    lines.push(`Nearest — ${(near.callsign||near.icao24).trim()}, ${Math.round(arr[0].d)} km out`);
+    const high=arr.reduce((a,b)=>b.f.alt>a.f.alt?b:a);
+    lines.push(`Highest tonight, ${(high.f.callsign||high.f.icao24).trim()}, at ${Math.round(high.f.alt*3.28084).toLocaleString()} feet`);
+    const fromDir=compass16(bearing(HOME.lat,HOME.lon,near.lat,near.lon));
+    lines.push(`${(near.callsign||near.icao24).trim()} crossing in from the ${fromDir}`);
+  }else if(feedMeta.connected){
+    lines.push('A quiet sky overhead');
+  }else if(feedMeta.error==='blocked'){
+    lines.push('No network in this viewer — open the page in Safari');
+  }else{
+    lines.push('Acquiring a live signal…');
+    lines.push('If it stays dark, open this page in Safari');
+  }
+  const txt=lines[capIdx%lines.length]; capIdx++;
+  el.classList.remove('show');
+  setTimeout(()=>{ el.textContent=txt; el.classList.add('show'); },400);
+}
+
+// ── CLOCK ────────────────────────────────────────────────
+function tickClock(){
+  const d=new Date();
+  document.getElementById('clock-time').textContent =
+    `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('clock-date').textContent =
+    d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+}
+
+// ── INTERACTION / FOCUS ──────────────────────────────────
+let everFocused=false;
+
+function pickAt(mx,my){
+  const R = W<640 ? 42 : 28;     // generous finger-sized hit target on mobile
+  let best=null, bd=R;
+  flights.forEach(f=>{
+    if(f.lat==null)return;
+    const p=latLonToXY(f.lat,f.lon);
+    const d=Math.hypot(mx-p.x,my-p.y);
+    if(d<bd){ bd=d; best=f; }
+  });
+  return best;
+}
+
+function setFocus(icao){
+  selectedIcao=icao||null;
+  const panel=document.getElementById('focus-panel');
+  const cap=document.getElementById('caption');
+  if(selectedIcao){
+    everFocused=true;
+    panel.classList.add('show');
+    cap.classList.remove('show');     // panel takes the bottom while focused
+    updateFocusPanel();
+  }else{
+    panel.classList.remove('show');
+    updateCaption();                  // bring the ambient line back
+  }
+}
+
+function updateFocusPanel(){
+  if(!selectedIcao) return;
+  const f=flights.find(o=>o.icao24===selectedIcao);
+  if(!f){ setFocus(null); return; }   // aircraft left range / signal lost → exit
+  const p=latLonToXY(f.lat,f.lon);
+  const ft=Math.round(f.alt*3.28084);
+  const fl='FL'+String(Math.round(ft/100)).padStart(3,'0');
+  const kn=Math.round(f.velocity*1.94384);
+  const mph=Math.round(f.velocity*2.23694);
+  document.getElementById('fp-call').textContent=(f.callsign||f.icao24).trim();
+  document.getElementById('fp-from').textContent=f.origin_country?('from '+f.origin_country):'';
+  document.getElementById('fp-alt').innerHTML=`${ft.toLocaleString()} ft <small>${fl}</small>`;
+  document.getElementById('fp-spd').innerHTML=`${kn} kn <small>${mph} mph</small>`;
+  document.getElementById('fp-hdg').innerHTML=`${f.heading}° <small>${compass16(f.heading)}</small>`;
+  document.getElementById('fp-dist').textContent=`${Math.round(p.dist)} km`;
+  const {h,s}=altHSL(f.alt);
+  const dot=document.getElementById('fp-dot');
+  dot.style.background=`hsl(${h},${s}%,72%)`;
+  dot.style.boxShadow=`0 0 12px hsl(${h},${s}%,72%)`;
+}
+
+const _fx=document.getElementById('sky-fx');
+_fx.addEventListener('pointerdown',e=>{
+  const r=_fx.getBoundingClientRect();
+  const hit=pickAt(e.clientX-r.left, e.clientY-r.top);
+  setFocus(hit?hit.icao24:null);
+});
+document.getElementById('fp-close').addEventListener('click',()=>setFocus(null));
+
+// ── RESIZE ───────────────────────────────────────────────
+function resize(){
+  W=window.innerWidth; H=window.innerHeight; CX=W/2; CY=H/2;
+  RAD=Math.min(W,H)*0.40;
+  document.getElementById('sky-fx').width=W;
+  document.getElementById('sky-fx').height=H;
+  buildSky(); paintBg();
+}
+window.addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(resize,150); });
+
+// ── INIT ─────────────────────────────────────────────────
+async function init(){
+  resize();
+  flights=[];
+  const fill=document.getElementById('l-fill'), msg=document.getElementById('l-msg');
+  fill.style.width='35%'; msg.textContent='Fixing home position…';
+  await new Promise(r=>setTimeout(r,400));
+  fill.style.width='65%'; msg.textContent='Acquiring live aircraft…';
+  await refresh();
+  fill.style.width='100%';
+  msg.textContent = feedMeta.connected ? 'Signal acquired.' : 'No feed — showing empty sky.';
+  await new Promise(r=>setTimeout(r,600));
+  document.getElementById('loading').classList.add('fade');
+  setTimeout(()=>document.getElementById('loading').style.display='none',1500);
+
+  requestAnimationFrame(loop);
+  tickClock(); setInterval(tickClock,15000);
+  setInterval(refresh,UPDATE_INTERVAL);
+  setInterval(updateCaption,8000);
+  setInterval(updateFocusPanel,600);
+}
+init();
+</script>
+</body>
+</html>
