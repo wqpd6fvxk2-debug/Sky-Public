@@ -282,7 +282,7 @@
 const HOME = { lat: 32.18, lon: 34.84 };
 const RANGE_KM = 120;   // city-region scale: aircraft motion is visible here.
                         // raise toward 250 for more sky / less apparent motion.
-const UPDATE_INTERVAL = 12000;
+const UPDATE_INTERVAL = 1000;   // poll every 1s (see self-scheduling loop: backs off if rate-limited)
 const MAX_LABELS = 5;           // nearest N aircraft get full cards
 
 // ── STATE ────────────────────────────────────────────────
@@ -981,9 +981,16 @@ async function init(){
 
   requestAnimationFrame(loop);
   tickClock(); setInterval(tickClock,15000);
-  setInterval(refresh,UPDATE_INTERVAL);
   setInterval(updateCaption,8000);
   setInterval(updateFocusPanel,600);
+
+  // Poll every UPDATE_INTERVAL, but: (a) never overlap requests — wait for each
+  // refresh to finish before scheduling the next; (b) if a source rate-limits us,
+  // back off to 15s so we don't get IP-banned, then resume.
+  (function schedule(){
+    const delay = feedMeta.error==='rate_limited' ? Math.max(UPDATE_INTERVAL,15000) : UPDATE_INTERVAL;
+    setTimeout(async ()=>{ await refresh(); schedule(); }, delay);
+  })();
 }
 init();
 </script>
