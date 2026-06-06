@@ -147,6 +147,26 @@
     #caption{font-size:14px;}
   }
 
+  /* ── PROXIMITY ALERT TOAST ── */
+  #alert-toast{
+    position:fixed; left:50%; top:64px; transform:translateX(-50%) translateY(-16px);
+    z-index:11; pointer-events:none; opacity:0;
+    display:flex; align-items:center; gap:9px;
+    padding:10px 18px; border-radius:999px;
+    background:rgba(20,15,30,0.82); border:1px solid rgba(233,200,132,0.55);
+    color:var(--cream); font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap;
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+    box-shadow:0 8px 36px rgba(0,0,0,0.5), 0 0 22px rgba(233,200,132,0.18);
+    transition:opacity .45s ease, transform .45s cubic-bezier(.2,.85,.25,1);
+  }
+  #alert-toast::before{
+    content:'✈'; color:var(--gold); font-size:13px;
+    transform:rotate(45deg); /* nose-up, matches the celestial glyphs */
+  }
+  #alert-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  @media (max-width:640px){ #alert-toast{ top:54px; font-size:10px; padding:9px 15px; } }
+
   /* ── ZOOM CONTROL ── */
   #zoom{
     position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:9;
@@ -204,8 +224,17 @@
     transition:color .2s, background .2s;
   }
   #focus-panel .fp-x:hover{ color:var(--cream); background:rgba(255,255,255,0.07); }
+  #focus-panel .fp-route{
+    margin-top:11px; font-family:'IBM Plex Mono',monospace; font-size:11px;
+    letter-spacing:.02em; color:var(--cream); line-height:1.45;
+    padding:8px 10px; border:1px solid var(--hair); border-radius:8px;
+    background:rgba(233,200,132,0.05); min-height:16px; display:none;
+  }
+  #focus-panel .fp-route.show{ display:block; }
+  #focus-panel .fp-route .arrow{ color:var(--gold); margin:0 6px; }
+  #focus-panel .fp-route .muted{ color:var(--cream-dim); }
   #focus-panel .fp-grid{
-    margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:13px 20px;
+    margin-top:14px; display:grid; grid-template-columns:1fr 1fr; gap:12px 20px;
   }
   #focus-panel .fp-cell .k{
     font-size:8.5px; letter-spacing:.24em; text-transform:uppercase; color:var(--cream-dim);
@@ -286,11 +315,16 @@
       <div class="fp-from" id="fp-from"></div>
     </div>
   </div>
+  <div class="fp-route" id="fp-route"></div>
   <div class="fp-grid">
     <div class="fp-cell"><div class="k">Altitude</div><div class="v" id="fp-alt">—</div></div>
     <div class="fp-cell"><div class="k">Speed</div><div class="v" id="fp-spd">—</div></div>
     <div class="fp-cell"><div class="k">Heading</div><div class="v" id="fp-hdg">—</div></div>
+    <div class="fp-cell"><div class="k">Vertical</div><div class="v" id="fp-vrt">—</div></div>
     <div class="fp-cell"><div class="k">Distance</div><div class="v" id="fp-dist">—</div></div>
+    <div class="fp-cell"><div class="k">Squawk</div><div class="v" id="fp-sqk">—</div></div>
+    <div class="fp-cell"><div class="k">Type</div><div class="v" id="fp-typ">—</div></div>
+    <div class="fp-cell"><div class="k">Registration</div><div class="v" id="fp-reg">—</div></div>
   </div>
 </div>
 
@@ -299,6 +333,8 @@
   <div id="zoom-level">1.0×</div>
   <button id="zoom-out" class="zbtn" aria-label="Zoom out">−</button>
 </div>
+
+<div id="alert-toast"><span id="alert-text"></span></div>
 
 <div id="loading">
   <div class="l-main">The Sky Above</div>
@@ -474,6 +510,9 @@ function parseProxy(data){
     lat:s[6], lon:s[5], alt:Math.round(s[7]||s[13]||0),
     velocity:s[9]||0, heading:Math.round(s[10]||0),
     origin_country:s[2]||'', trail:[],
+    type:null, reg:null, squawk:(s[14]||'').toString().trim()||null,
+    vrate:(typeof s[11]==='number')?Math.round(s[11]*196.85):null,  // m/s → ft/min
+    category:null, onground:!!s[8],
   })).filter(f=>f.lat!=null&&f.lon!=null);
 }
 
@@ -492,6 +531,14 @@ function parseAdsbx(data){
       velocity:gsKn*0.514444,      // → m/s
       heading:Math.round(a.track ?? a.true_heading ?? 0),
       origin_country:sub, trail:[],
+      // richer detail straight from the feed:
+      type:(a.t||'').trim()||null,                 // ICAO type, e.g. B738
+      reg:(a.r||'').trim()||null,                  // registration, e.g. 4X-EKA
+      squawk:(a.squawk||'').toString().trim()||null,
+      vrate:(typeof a.baro_rate==='number')?a.baro_rate
+            :(typeof a.geom_rate==='number')?a.geom_rate:null,  // ft/min
+      category:(a.category||'').trim()||null,      // e.g. A3
+      onground:a.alt_baro==='ground',
     };
   }).filter(f=>f.lat!=null&&f.lon!=null);
 }
@@ -782,6 +829,28 @@ function draw(now){
     const p=focused.pos; const {h:fh,s:fs}=altHSL(focused.f.alt);
     const C=(a)=>`hsla(${fh},${fs}%,78%,${a})`;
     const pulse=(Math.sin(tt*2.3)+1)/2;
+
+    // Route-ahead vector: a dashed line projected from the aircraft along its current
+    // heading out to the edge of the scope. The trail behind already shows where it has
+    // been; this shows where it is going, so together they trace its path across the sky.
+    // We rebuild the heading as a screen-space angle (north is up, hence the -90° turn).
+    const ang=(focused.f.heading-90)*Math.PI/180;
+    const reach=RAD*1.05;                       // run the line to just past the outer ring
+    const ex=p.x+Math.cos(ang)*reach, ey=p.y+Math.sin(ang)*reach;
+    const grad=ctx.createLinearGradient(p.x,p.y,ex,ey);
+    grad.addColorStop(0, C(0.55));              // bright at the aircraft
+    grad.addColorStop(1, C(0));                 // fading into the distance ahead
+    ctx.save();
+    ctx.strokeStyle=grad; ctx.lineWidth=1.4; ctx.setLineDash([2,6]);
+    ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(ex,ey); ctx.stroke();
+    ctx.setLineDash([]);
+    // a small arrowhead so the direction of travel is unambiguous
+    const ax=p.x+Math.cos(ang)*36, ay=p.y+Math.sin(ang)*36;
+    ctx.translate(ax,ay); ctx.rotate(ang);
+    ctx.fillStyle=C(0.6);
+    ctx.beginPath(); ctx.moveTo(6,0); ctx.lineTo(-4,4); ctx.lineTo(-4,-4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
     // rotating dashed ring
     ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(tt*0.5);
     ctx.strokeStyle=C(0.85); ctx.lineWidth=1.3; ctx.setLineDash([3,7]);
@@ -850,6 +919,7 @@ async function refresh(){
     lastUpdateAt=Date.now();
     dot.className='dot';
     word.textContent = 'LIVE · '+(feedMeta.source||'');
+    checkProximity(data);             // raise an alert if a new aircraft is now within 10 km
   }else{
     flights=[];                       // real-only: no data → empty sky, never fake
     dot.className = feedMeta.error==='rate_limited' ? 'dot limit' : 'dot sim';
@@ -861,6 +931,70 @@ async function refresh(){
   renderDiag();
   updateFeedAge();
   updateCaption();
+}
+
+// ── PROXIMITY ALERT (new aircraft within 10 km) ──────────
+// "New" means an aircraft we were NOT already tracking inside the ring. We keep a set of
+// the ICAO ids currently within 10 km; an alert fires only on the transition from outside
+// to inside, so a plane that lingers nearby won't re-alert every second. When it leaves the
+// ring we drop it from the set, so a genuine later re-entry can alert again.
+const ALERT_RADIUS_KM = 10;
+let near10 = new Set();
+let alertTimer = null;
+
+function checkProximity(list){
+  const nextNear = new Set();
+  const arrivals = [];
+  list.forEach(f=>{
+    if(f.lat==null) return;
+    const dist = haversine(HOME.lat, HOME.lon, f.lat, f.lon);
+    if(dist <= ALERT_RADIUS_KM){
+      nextNear.add(f.icao24);
+      if(!near10.has(f.icao24)) arrivals.push({ f, dist });   // crossed INTO the radius now
+    }
+  });
+  near10 = nextNear;
+  if(!arrivals.length) return;
+
+  // If several arrive at once, announce the closest and note how many others came with it.
+  arrivals.sort((a,b)=>a.dist-b.dist);
+  const lead = arrivals[0];
+  const name = (lead.f.callsign || lead.f.icao24 || 'aircraft').trim();
+  const extra = arrivals.length>1 ? `  +${arrivals.length-1}` : '';
+  showAlert(`overhead · ${name} · ${lead.dist.toFixed(1)} km${extra}`);
+  chime();
+}
+
+function showAlert(text){
+  const t=document.getElementById('alert-toast'), s=document.getElementById('alert-text');
+  if(!t||!s) return;
+  s.textContent=text;
+  t.classList.add('show');
+  clearTimeout(alertTimer);
+  alertTimer=setTimeout(()=>t.classList.remove('show'), 5200);   // auto-dismiss
+}
+
+// A soft two-note chime via the Web Audio API. Browsers block audio until the user has
+// interacted with the page, so we lazily create/resume the audio context on the first tap
+// (wired below). If sound isn't permitted yet we simply skip it — the visual toast still shows.
+let audioCtx=null;
+function initAudio(){
+  if(audioCtx) { if(audioCtx.state==='suspended') audioCtx.resume(); return; }
+  try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioCtx=null; }
+}
+function chime(){
+  if(!audioCtx || audioCtx.state!=='running') return;
+  const now=audioCtx.currentTime;
+  [880, 1174.7].forEach((freq,i)=>{                 // A5 then ~D6, a gentle rising interval
+    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
+    osc.type='sine'; osc.frequency.value=freq;
+    const t0=now+i*0.14;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.12, t0+0.03);   // quick fade-in
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.5);  // soft tail
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0+0.55);
+  });
 }
 
 // ── "updated Ns ago" (freshness of the data on screen) ───
@@ -963,10 +1097,86 @@ function setFocus(icao){
     panel.classList.add('show');
     cap.classList.remove('show');     // panel takes the bottom while focused
     updateFocusPanel();
+    const f=flights.find(o=>o.icao24===selectedIcao);
+    if(f) lookupRoute(f.callsign);    // fetch origin → destination for this aircraft
   }else{
     panel.classList.remove('show');
     updateCaption();                  // bring the ambient line back
   }
+}
+
+// ── ROUTE & AIRLINE ENRICHMENT ───────────────────────────
+// Origin/destination airports and the operating airline are NOT broadcast over ADS-B.
+// They live in a separate schedule database, so we look them up on demand from adsbdb
+// (free, keyless) keyed by the flight's callsign — but only for the aircraft the user
+// actually taps, and we cache each result so a given flight is fetched at most once.
+const routeCache = {};   // callsign → { state:'pending'|'ok'|'none', origin, destination, airline }
+
+function fmtAirport(a){
+  if(!a) return null;
+  return { code: a.iata_code || a.icao_code || '', place: a.municipality || a.name || '' };
+}
+
+async function lookupRoute(callsign){
+  const cs=(callsign||'').trim();
+  if(!cs || routeCache[cs]) return;        // nothing to do, or already fetched/in-flight
+  routeCache[cs]={ state:'pending' };
+  refreshRouteIfFocused(cs);
+
+  // adsbdb returns the flight route (and airline) for a callsign. We try the API directly
+  // first; if CORS or the in-app viewer blocks it, we retry through public proxies. If
+  // every attempt fails — or the flight simply isn't in the database (military, GA,
+  // unscheduled) — we mark it 'none' and show "route unavailable" rather than inventing one.
+  const base=`https://api.adsbdb.com/v0/callsign/${encodeURIComponent(cs)}`;
+  const urls=[ base,
+    'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(base),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(base) ];
+
+  for(const u of urls){
+    try{
+      const r=await fetchT(u,7000);
+      if(!r || !r.ok) continue;
+      const j=await r.json();
+      const fr=j && j.response && j.response.flightroute;
+      if(fr && (fr.origin || fr.destination)){
+        routeCache[cs]={ state:'ok',
+          origin:fmtAirport(fr.origin), destination:fmtAirport(fr.destination),
+          airline:(fr.airline && fr.airline.name) || null };
+      }else{
+        routeCache[cs]={ state:'none' };   // valid response, but no route on file
+      }
+      refreshRouteIfFocused(cs);
+      return;
+    }catch(e){ /* try the next source */ }
+  }
+  routeCache[cs]={ state:'none' };
+  refreshRouteIfFocused(cs);
+}
+
+// Only repaint the route line if the still-focused aircraft is the one we just resolved.
+function refreshRouteIfFocused(cs){
+  if(!selectedIcao) return;
+  const f=flights.find(o=>o.icao24===selectedIcao);
+  if(f && (f.callsign||'').trim()===cs) renderRoute(f);
+}
+
+function renderRoute(f){
+  const el=document.getElementById('fp-route');
+  if(!el) return;
+  const rec=routeCache[(f.callsign||'').trim()];
+  // When we know the airline it's a nicer subtitle than the raw registration·type string.
+  if(rec && rec.state==='ok' && rec.airline){
+    document.getElementById('fp-from').textContent = rec.airline.toUpperCase();
+  }
+  if(!rec){ el.classList.remove('show'); el.innerHTML=''; return; }
+  el.classList.add('show');
+  if(rec.state==='pending'){ el.innerHTML='<span class="muted">looking up route…</span>'; return; }
+  if(rec.state==='none' || (!rec.origin && !rec.destination)){
+    el.innerHTML='<span class="muted">route unavailable</span>'; return;
+  }
+  const o=rec.origin, d=rec.destination;
+  const side=(ap)=> ap ? `<b>${ap.code||'?'}</b> ${ap.place||''}`.trim() : '<span class="muted">?</span>';
+  el.innerHTML = `${side(o)}<span class="arrow">→</span>${side(d)}`;
 }
 
 function updateFocusPanel(){
@@ -984,14 +1194,35 @@ function updateFocusPanel(){
   document.getElementById('fp-spd').innerHTML=`${kn} kn <small>${mph} mph</small>`;
   document.getElementById('fp-hdg').innerHTML=`${f.heading}° <small>${compass16(f.heading)}</small>`;
   document.getElementById('fp-dist').textContent=`${Math.round(p.dist)} km`;
+
+  // Vertical rate tells us whether the aircraft is climbing, descending, or level.
+  // The feed reports it in feet-per-minute; we add a small arrow so the trend reads at a glance.
+  const vr=f.vrate;
+  let vrtTxt='—';
+  if(typeof vr==='number' && !f.onground){
+    const arrow = vr>150 ? '▲' : vr<-150 ? '▼' : '→';
+    vrtTxt = `${arrow} ${Math.abs(Math.round(vr/10)*10).toLocaleString()} <small>ft/min</small>`;
+  } else if(f.onground){ vrtTxt='on ground'; }
+  document.getElementById('fp-vrt').innerHTML=vrtTxt;
+
+  document.getElementById('fp-sqk').textContent = f.squawk || '—';
+  document.getElementById('fp-typ').textContent = f.type || '—';
+  document.getElementById('fp-reg').textContent = f.reg || '—';
+
   const {h,s}=altHSL(f.alt);
   const dot=document.getElementById('fp-dot');
   dot.style.background=`hsl(${h},${s}%,72%)`;
   dot.style.boxShadow=`0 0 12px hsl(${h},${s}%,72%)`;
+
+  // The route (origin → destination) and airline are NOT in the ADS-B feed, so we look
+  // them up once per aircraft from adsbdb and render them when they arrive. renderRoute()
+  // reflects the current cached state (pending / found / unavailable) for this callsign.
+  renderRoute(f);
 }
 
 const _fx=document.getElementById('sky-fx');
 _fx.addEventListener('pointerdown',e=>{
+  initAudio();                         // first tap satisfies the browser's audio-gesture rule
   const r=_fx.getBoundingClientRect();
   const hit=pickAt(e.clientX-r.left, e.clientY-r.top);
   setFocus(hit?hit.icao24:null);
