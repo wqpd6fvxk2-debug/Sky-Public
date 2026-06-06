@@ -98,7 +98,7 @@
     padding:11px 22px; border-radius:22px;
     background:rgba(20,30,70,0.5); border:1.5px solid rgba(255,255,255,0.22);
     -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
-    opacity:0;transition:opacity 1.2s ease;
+    opacity:0;transition:opacity 1.6s ease;
     box-shadow:0 8px 30px rgba(0,0,0,0.3);
   }
   #caption::after{   /* little bubble tail */
@@ -146,25 +146,30 @@
 
   /* ── MOBILE / PORTRAIT: declutter the bottom band ── */
   @media (max-width: 640px){
-    #title{top:16px;padding:9px 18px 10px;border-radius:20px;}
-    #title .main{font-size:21px;letter-spacing:0.02em;}
-    #title .sub{font-size:10px;margin-top:2px;}
+    /* The status pill (left) and clock (right) own the very top strip. The title banner
+       can't fit between them on a narrow phone, so we drop it to its own row just below,
+       centered and width-capped, so the three never overlap. */
+    #title{top:74px;padding:8px 16px 9px;border-radius:18px;max-width:86vw;}
+    #title .main{font-size:19px;letter-spacing:0.01em;}
+    #title .sub{font-size:10px;margin-top:1px;}
 
-    /* location → top-left, drop coordinates to save room */
-    #loc{top:14px;left:12px;bottom:auto;padding:7px 11px;border-radius:13px;line-height:1.35;}
+    /* location → top-left, compact, drop coordinates to save room */
+    #loc{top:12px;left:10px;bottom:auto;padding:6px 10px;border-radius:13px;line-height:1.3;max-width:54vw;}
     #loc .coords{display:none;}
     #loc .city{font-size:10px;letter-spacing:0.02em;}
+    #feed-age{font-size:9px;}
 
     /* clock → top-right, compact */
-    #clock{top:12px;right:12px;bottom:auto;padding:5px 12px;border-radius:14px;}
-    #clock .time{font-size:17px;letter-spacing:0.01em;}
+    #clock{top:10px;right:10px;bottom:auto;padding:5px 11px;border-radius:14px;}
+    #clock .time{font-size:16px;letter-spacing:0.01em;}
     #clock .date{font-size:9px;margin-top:1px;}
 
     /* caption owns the bottom alone */
     #caption{bottom:18px;max-width:90vw;font-size:13px;padding:9px 16px;}
   }
   @media (max-width: 380px){
-    #title .main{font-size:19px;}
+    #title{top:70px;}
+    #title .main{font-size:17px;}
     #caption{font-size:12px;}
   }
 
@@ -676,36 +681,69 @@ async function fetchFeed(){
 
 // ── DRAW AIRCRAFT GLYPH ──────────────────────────────────
 function drawJet(ctx,size,color,light){
-  // A friendly two-tone plane: the body in the aircraft's color, with a lighter glossy
-  // belly stripe down the fuselage so it reads like the cheerful planes in the reference.
-  ctx.beginPath();
-  ctx.moveTo(size,0);
-  ctx.lineTo(size*0.1,size*0.16);
-  ctx.lineTo(-size*0.15,size*0.16);
-  ctx.lineTo(-size*0.55,size*0.5);     // wing back-right
-  ctx.lineTo(-size*0.35,size*0.16);
-  ctx.lineTo(-size*0.7,size*0.18);
-  ctx.lineTo(-size*0.78,size*0.42);    // tail
-  ctx.lineTo(-size,0);
-  ctx.lineTo(-size*0.78,-size*0.42);
-  ctx.lineTo(-size*0.7,-size*0.18);
-  ctx.lineTo(-size*0.35,-size*0.16);
-  ctx.lineTo(-size*0.55,-size*0.5);
-  ctx.lineTo(-size*0.15,-size*0.16);
-  ctx.lineTo(size*0.1,-size*0.16);
-  ctx.closePath();
-  ctx.fillStyle=color;
-  ctx.fill();
-  // glossy belly highlight along the fuselage
+  // A friendly, chunky cartoon airliner seen from above, nose pointing toward +x so it can
+  // rotate to face the aircraft's heading. Built from rounded curves with a soft dark
+  // outline so it reads like a sticker — the look of the planes in the reference art.
+  const s=size;
+  const outline='rgba(8,14,38,0.5)';
+  ctx.lineJoin='round'; ctx.lineCap='round';
+  ctx.strokeStyle=outline; ctx.lineWidth=s*0.09;
+
+  // helper: fill a path in the plane color with the soft outline
+  const part=(draw)=>{ ctx.beginPath(); draw(); ctx.closePath(); ctx.fillStyle=color; ctx.fill(); ctx.stroke(); };
+
+  // WINGS — swept back, rounded tips (drawn first so the body overlaps their roots)
+  part(()=>{ // right wing
+    ctx.moveTo(-s*0.02, s*0.10);
+    ctx.quadraticCurveTo(-s*0.10, s*0.70, -s*0.50, s*0.66);
+    ctx.quadraticCurveTo(-s*0.40, s*0.28, -s*0.38, s*0.12);
+  });
+  part(()=>{ // left wing
+    ctx.moveTo(-s*0.02, -s*0.10);
+    ctx.quadraticCurveTo(-s*0.10, -s*0.70, -s*0.50, -s*0.66);
+    ctx.quadraticCurveTo(-s*0.40, -s*0.28, -s*0.38, -s*0.12);
+  });
+  // TAIL STABILIZERS — small swept fins near the tail
+  part(()=>{
+    ctx.moveTo(-s*0.70, s*0.05);
+    ctx.quadraticCurveTo(-s*0.80, s*0.34, -s*0.97, s*0.30);
+    ctx.quadraticCurveTo(-s*0.88, s*0.10, -s*0.86, s*0.05);
+  });
+  part(()=>{
+    ctx.moveTo(-s*0.70, -s*0.05);
+    ctx.quadraticCurveTo(-s*0.80, -s*0.34, -s*0.97, -s*0.30);
+    ctx.quadraticCurveTo(-s*0.88, -s*0.10, -s*0.86, -s*0.05);
+  });
+
+  // FUSELAGE — a smooth rounded capsule, fat in the middle, tapering to nose and tail
+  part(()=>{
+    ctx.moveTo(s*0.96, 0);
+    ctx.quadraticCurveTo(s*0.5, s*0.30, -s*0.35, s*0.25);
+    ctx.quadraticCurveTo(-s*0.85, s*0.18, -s*1.02, 0);
+    ctx.quadraticCurveTo(-s*0.85, -s*0.18, -s*0.35, -s*0.25);
+    ctx.quadraticCurveTo(s*0.5, -s*0.30, s*0.96, 0);
+  });
+
+  // VERTICAL FIN — a little triangle at the tail, along the centreline (seen from above)
+  part(()=>{
+    ctx.moveTo(-s*0.72, 0);
+    ctx.quadraticCurveTo(-s*0.95, s*0.06, -s*1.02, 0);
+    ctx.quadraticCurveTo(-s*0.95, -s*0.06, -s*0.72, 0);
+  });
+
+  // glossy belly highlight down the fuselage (no outline)
   if(light){
     ctx.beginPath();
-    ctx.moveTo(size*0.85,0);
-    ctx.lineTo(-size*0.55,size*0.07);
-    ctx.lineTo(-size*0.55,-size*0.07);
+    ctx.moveTo(s*0.70, 0);
+    ctx.quadraticCurveTo(s*0.1, s*0.12, -s*0.55, s*0.07);
+    ctx.quadraticCurveTo(-s*0.55, -s*0.07, s*0.1, -s*0.12);
+    ctx.quadraticCurveTo(s*0.70, 0, s*0.70, 0);
     ctx.closePath();
-    ctx.fillStyle=light;
-    ctx.fill();
+    ctx.fillStyle=light; ctx.fill();
   }
+  // cockpit window — a small dark dot near the nose
+  ctx.beginPath(); ctx.arc(s*0.62, 0, s*0.12, 0, Math.PI*2);
+  ctx.fillStyle='rgba(10,18,45,0.6)'; ctx.fill();
 }
 
 // ── LABEL CARDS: compute geometry → de-collide → render ──
@@ -975,7 +1013,7 @@ function draw(now){
     }
 
     // soft glow under the plane, in its color
-    const gr=sel?24:15;
+    const gr=sel?28:18;
     const gg=ctx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,gr);
     gg.addColorStop(0,pcol(icao,(sel?0.6:0.4)*dim)); gg.addColorStop(1,pcol(icao,0));
     ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(pos.x,pos.y,gr,0,Math.PI*2); ctx.fill();
@@ -985,7 +1023,7 @@ function draw(now){
     ctx.translate(pos.x,pos.y);
     ctx.rotate((f.heading-90)*Math.PI/180);
     ctx.shadowColor=pcol(icao,0.85*dim); ctx.shadowBlur=sel?14:8;
-    drawJet(ctx, sel?11:8, pcol(icao, dim), `rgba(255,255,255,${0.7*dim})`);
+    drawJet(ctx, sel?15:11, pcol(icao, dim), `rgba(255,255,255,${0.78*dim})`);
     ctx.restore();
     ctx.shadowBlur=0;
   });
@@ -1202,33 +1240,89 @@ function renderDiag(){
 // ── ROTATING CAPTION ─────────────────────────────────────
 const NUM=['zero','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen','twenty'];
 function spell(n){ return n<=20?NUM[n]:String(n); }
-let capIdx=0;
+function cap1(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+// The "highlights" are the gentle facts that drift along the bottom. We build a POOL of
+// candidate lines from whatever the live feed (and any route lookups) currently support,
+// then show them one at a time on a slow timer. Each refresh recomputes the pool, so the
+// facts stay true to what's overhead right now. Routes/airlines appear here when adsbdb has
+// resolved them — which means useful route info shows up even before you tap a plane.
+let capPool=[], capIdx=0;
+
+function buildHighlights(){
+  const arr=flights.filter(f=>f.lat!=null)
+    .map(f=>({f,d:haversine(HOME.lat,HOME.lon,f.lat,f.lon)}))
+    .filter(o=>o.d<=RANGE_KM).sort((a,b)=>a.d-b.d);
+  const out=[];
+  const name=o=>(o.callsign||o.icao24||'aircraft').trim();
+
+  if(!arr.length){
+    if(feedMeta.connected) return ['A quiet sky overhead right now','Waiting for the next aircraft to drift into range'];
+    if(feedMeta.error==='blocked') return ['No network in this viewer — open the page in Safari'];
+    return ['Acquiring a live signal…','If it stays dark, open this page in Safari'];
+  }
+
+  const n=arr.length;
+  if(!everFocused) out.push('Tap any aircraft to see its details and route');
+  out.push(`${cap1(spell(n))} aircraft over your sky right now`);
+
+  // nearest
+  const near=arr[0];
+  out.push(`Closest right now — ${name(near.f)}, just ${Math.round(near.d)} km away`);
+  const fromDir=compass16(bearing(HOME.lat,HOME.lon,near.f.lat,near.f.lon));
+  out.push(`${name(near.f)} crossing in from the ${fromDir}`);
+
+  // highest + lowest
+  const high=arr.reduce((a,b)=>b.f.alt>a.f.alt?b:a);
+  out.push(`Highest tonight, ${name(high.f)}, at ${Math.round(high.f.alt*3.28084).toLocaleString()} feet`);
+  const airborne=arr.filter(o=>o.f.alt>150);
+  if(airborne.length){
+    const low=airborne.reduce((a,b)=>b.f.alt<a.f.alt?b:a);
+    if(low!==high) out.push(`Lowest in view, ${name(low.f)}, at ${Math.round(low.f.alt*3.28084).toLocaleString()} feet`);
+  }
+
+  // fastest
+  const fast=arr.reduce((a,b)=>b.f.velocity>a.f.velocity?b:a);
+  const fastKn=Math.round(fast.f.velocity*1.94384);
+  if(fastKn>120) out.push(`Fastest overhead, ${name(fast.f)}, ${fastKn} knots`);
+
+  // most distant within range
+  if(n>1){
+    const farO=arr[arr.length-1];
+    out.push(`Most distant, ${name(farO.f)}, ${Math.round(farO.d)} km out`);
+  }
+
+  // a climbing / descending note from vertical rate, if the feed carries it
+  const climber=arr.find(o=>typeof o.f.vrate==='number' && o.f.vrate>500);
+  if(climber) out.push(`${name(climber.f)} climbing steeply, ${Math.abs(Math.round(climber.f.vrate/100)*100).toLocaleString()} ft/min`);
+  const diver=arr.find(o=>typeof o.f.vrate==='number' && o.f.vrate<-500);
+  if(diver) out.push(`${name(diver.f)} on its way down toward the runway`);
+
+  // ROUTE / AIRLINE highlights from any aircraft we've already enriched via adsbdb
+  for(const o of arr){
+    const info=flightInfo[o.f.icao24];
+    if(info && info.state==='ok'){
+      const oc=info.origin&&info.origin.place, dc=info.destination&&info.destination.place;
+      if(oc && dc){ out.push(`${name(o.f)} flying ${oc} → ${dc}, overhead now`); break; }
+    }
+  }
+  for(const o of arr){
+    const info=flightInfo[o.f.icao24];
+    if(info && info.state==='ok' && info.airline){ out.push(`${info.airline} passing overhead as ${name(o.f)}`); break; }
+  }
+
+  return out;
+}
+
 function updateCaption(){
   const el=document.getElementById('caption');
   if(selectedIcao){ el.classList.remove('show'); return; }   // panel owns the bottom while focused
-  const arr=flights.filter(f=>f.lat!=null).map(f=>({f,d:haversine(HOME.lat,HOME.lon,f.lat,f.lon)})).filter(o=>o.d<=RANGE_KM).sort((a,b)=>a.d-b.d);
-  const lines=[];
-  if(arr.length){
-    if(!everFocused) lines.push('Tap any aircraft to focus');
-    const n=arr.length;
-    lines.push(`${spell(n).charAt(0).toUpperCase()+spell(n).slice(1)} aircraft aloft within reach`);
-    const near=arr[0].f;
-    lines.push(`Nearest — ${(near.callsign||near.icao24).trim()}, ${Math.round(arr[0].d)} km out`);
-    const high=arr.reduce((a,b)=>b.f.alt>a.f.alt?b:a);
-    lines.push(`Highest tonight, ${(high.f.callsign||high.f.icao24).trim()}, at ${Math.round(high.f.alt*3.28084).toLocaleString()} feet`);
-    const fromDir=compass16(bearing(HOME.lat,HOME.lon,near.lat,near.lon));
-    lines.push(`${(near.callsign||near.icao24).trim()} crossing in from the ${fromDir}`);
-  }else if(feedMeta.connected){
-    lines.push('A quiet sky overhead');
-  }else if(feedMeta.error==='blocked'){
-    lines.push('No network in this viewer — open the page in Safari');
-  }else{
-    lines.push('Acquiring a live signal…');
-    lines.push('If it stays dark, open this page in Safari');
-  }
-  const txt=lines[capIdx%lines.length]; capIdx++;
+  capPool=buildHighlights();
+  if(!capPool.length){ el.classList.remove('show'); return; }
+  const txt=capPool[capIdx%capPool.length]; capIdx++;
+  // cross-fade: fade out, swap text, fade back in
   el.classList.remove('show');
-  setTimeout(()=>{ el.textContent=txt; el.classList.add('show'); },400);
+  setTimeout(()=>{ el.textContent=txt; el.classList.add('show'); }, 700);
 }
 
 // ── CLOCK ────────────────────────────────────────────────
@@ -1303,6 +1397,7 @@ async function lookupFlight(f){
     : `v0/aircraft/${encodeURIComponent(icao)}`;
   const base = `https://api.adsbdb.com/${path}`;
   const urls=[ base,
+    'https://corsproxy.io/?url='+encodeURIComponent(base),
     'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(base),
     'https://api.allorigins.win/raw?url='+encodeURIComponent(base) ];
 
@@ -1534,7 +1629,7 @@ async function init(){
 
   requestAnimationFrame(loop);
   tickClock(); setInterval(tickClock,15000);
-  setInterval(updateCaption,16000);
+  setInterval(updateCaption,32000);   // highlights linger ~32s each (cross-fade transition is slow)
   setInterval(updateFocusPanel,600);
   setInterval(updateFeedAge,1000);
 
