@@ -147,6 +147,28 @@
     #caption{font-size:14px;}
   }
 
+  /* ── ZOOM CONTROL ── */
+  #zoom{
+    position:fixed; right:16px; top:50%; transform:translateY(-50%); z-index:9;
+    display:flex; flex-direction:column; align-items:center; gap:9px; pointer-events:none;
+  }
+  .zbtn{
+    pointer-events:auto; width:42px; height:42px; border-radius:50%;
+    background:rgba(9,12,28,0.55); border:1px solid var(--hair);
+    color:var(--cream); font:300 22px/1 'IBM Plex Mono',monospace;
+    -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; user-select:none; -webkit-user-select:none;
+    transition:background .15s, border-color .15s, transform .08s;
+  }
+  .zbtn:hover{ border-color:rgba(233,200,132,0.5); }
+  .zbtn:active{ background:rgba(233,200,132,0.22); transform:scale(0.93); }
+  .zbtn:disabled{ opacity:0.3; pointer-events:none; }
+  #zoom-level{
+    font:300 9px/1 'IBM Plex Mono',monospace; letter-spacing:0.12em;
+    color:var(--gold-dim); pointer-events:none; text-align:center;
+  }
+
   /* ── FOCUS PANEL ── */
   #focus-panel{
     position:fixed; left:50%; bottom:26px;
@@ -272,6 +294,12 @@
   </div>
 </div>
 
+<div id="zoom">
+  <button id="zoom-in" class="zbtn" aria-label="Zoom in">+</button>
+  <div id="zoom-level">1.0×</div>
+  <button id="zoom-out" class="zbtn" aria-label="Zoom out">−</button>
+</div>
+
 <div id="loading">
   <div class="l-main">The Sky Above</div>
   <div class="l-sub">Nocturne</div>
@@ -292,6 +320,8 @@ let W,H,CX,CY,RAD;
 let flights = [];
 let selectedIcao = null;
 let lastUpdateAt = 0;   // ms timestamp of last successful data fetch
+let zoom = 1;           // display zoom: effective range = RANGE_KM / zoom (fetch stays full)
+function effRange(){ return RANGE_KM / zoom; }
 let feedMeta = { source:null, sub:null, error:null, connected:false };
 let stars = [], dust = [], nebula = [], glints = [];
 let t0 = performance.now();
@@ -311,7 +341,7 @@ function bearing(la1,lo1,la2,lo2){
 function latLonToXY(lat,lon){
   const dist=haversine(HOME.lat,HOME.lon,lat,lon);
   const bear=bearing(HOME.lat,HOME.lon,lat,lon);
-  const r=(dist/RANGE_KM)*RAD;
+  const r=(dist/effRange())*RAD;
   const ang=(bear-90)*Math.PI/180;
   return { x:CX+r*Math.cos(ang), y:CY+r*Math.sin(ang), dist, bear, r };
 }
@@ -654,9 +684,10 @@ function draw(now){
     ctx.restore();
   });
 
-  // ── range rings ──
-  const r1=Math.max(10,Math.round(RANGE_KM/3/10)*10), r2=Math.round(2*RANGE_KM/3/10)*10;
-  const rings=[ {f:r1/RANGE_KM,l:r1+' km'}, {f:r2/RANGE_KM,l:r2+' km'}, {f:1,l:''} ];
+  // ── range rings (reflect zoomed scale) ──
+  const ER=effRange();
+  const r1=Math.max(5,Math.round(ER/3/5)*5), r2=Math.round(2*ER/3/5)*5;
+  const rings=[ {f:r1/ER,l:r1+' km'}, {f:r2/ER,l:r2+' km'}, {f:1,l:''} ];
   rings.forEach((ring,i)=>{
     const rr=RAD*ring.f;
     ctx.beginPath(); ctx.arc(CX,CY,rr,0,Math.PI*2);
@@ -721,13 +752,13 @@ function draw(now){
       for(let i=1;i<f.trail.length;i++){
         const p0=latLonToXY(f.trail[i-1].lat,f.trail[i-1].lon);
         const p1=latLonToXY(f.trail[i].lat,f.trail[i].lon);
-        const a=(i/f.trail.length)*0.5;
+        const a=(i/f.trail.length)*0.6;
         ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y);
         ctx.strokeStyle=acol(f.alt,62,a*dim); ctx.lineWidth=1.1; ctx.stroke();
       }
       const last=latLonToXY(f.trail[f.trail.length-1].lat,f.trail[f.trail.length-1].lon);
       ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(pos.x,pos.y);
-      ctx.strokeStyle=acol(f.alt,62,0.45*dim); ctx.lineWidth=1.1; ctx.stroke();
+      ctx.strokeStyle=acol(f.alt,62,0.6*dim); ctx.lineWidth=1.1; ctx.stroke();
     }
 
     // soft glow under jet
@@ -813,7 +844,7 @@ async function refresh(){
     // carry trails across refreshes by icao24
     data.forEach(f=>{
       const old=flights.find(o=>o.icao24===f.icao24);
-      if(old){ f.trail=[...(old.trail||[]),{lat:old.lat,lon:old.lon}]; if(f.trail.length>16)f.trail.shift(); }
+      if(old){ f.trail=[...(old.trail||[]),{lat:old.lat,lon:old.lon}]; if(f.trail.length>90)f.trail.shift(); }
     });
     flights=data;
     lastUpdateAt=Date.now();
@@ -967,6 +998,26 @@ _fx.addEventListener('pointerdown',e=>{
 });
 document.getElementById('fp-close').addEventListener('click',()=>setFocus(null));
 
+// ── ZOOM ──────────────────────────────────────────────────
+function updateRangeLabel(){
+  const el=document.getElementById('range-label');
+  if(el) el.textContent = Math.round(effRange())+' km';
+}
+function setZoom(z){
+  zoom=Math.max(1,Math.min(8,z));
+  const lvl=document.getElementById('zoom-level');
+  if(lvl) lvl.textContent=zoom.toFixed(1)+'×';
+  const zi=document.getElementById('zoom-in'), zo=document.getElementById('zoom-out');
+  if(zi) zi.disabled = zoom>=8-1e-9;
+  if(zo) zo.disabled = zoom<=1+1e-9;
+  updateRangeLabel();
+}
+(function wireZoom(){
+  const zi=document.getElementById('zoom-in'), zo=document.getElementById('zoom-out');
+  if(zi) zi.addEventListener('click',()=>setZoom(zoom*1.4));
+  if(zo) zo.addEventListener('click',()=>setZoom(zoom/1.4));
+})();
+
 // ── RESIZE ───────────────────────────────────────────────
 function resize(){
   W=window.innerWidth; H=window.innerHeight; CX=W/2; CY=H/2;
@@ -981,7 +1032,7 @@ window.addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setT
 async function init(){
   resize();
   flights=[];
-  document.getElementById('range-label').textContent = RANGE_KM+' km';
+  setZoom(1);
   const fill=document.getElementById('l-fill'), msg=document.getElementById('l-msg');
   fill.style.width='35%'; msg.textContent='Fixing home position…';
   await new Promise(r=>setTimeout(r,400));
@@ -995,7 +1046,7 @@ async function init(){
 
   requestAnimationFrame(loop);
   tickClock(); setInterval(tickClock,15000);
-  setInterval(updateCaption,8000);
+  setInterval(updateCaption,16000);
   setInterval(updateFocusPanel,600);
   setInterval(updateFeedAge,1000);
 
